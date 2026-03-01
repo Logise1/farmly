@@ -47,14 +47,16 @@ function generateSpecificReward(cId, gameKey, multiplier) {
     const randType = seededRandom(gameSeedVal);
 
     if (gameKey === '2048') {
-        if (randType < 0.3) return { type: 'coins', amount: Math.floor(seededRandom(gameSeedVal + 1) * 3000) + 2000, icon: '💰', name: 'Saco Monedas', css: 'text-yellow-500' };
+        if (randType < 0.3) return { type: 'coins', amount: Math.floor(seededRandom(gameSeedVal + 1) * 15000) + 10000, icon: '💰', name: 'Tesoro Monedas', css: 'text-yellow-500' };
         else if (randType < 0.7) {
             const crop = seededRandom(gameSeedVal + 2) > 0.6 ? 'sandia' : 'fresa';
             const rarity = crop === 'sandia' ? 'legendario' : 'mitico';
-            return { type: 'seed', id: `seed_${crop}_${rarity}`, amount: 1, icon: CROP_ICONS[crop], name: `Semilla ${crop} (${rarity})`, css: 'text-amber-500' };
+            const amnt = Math.floor(seededRandom(gameSeedVal + 3) * 3) + 3;
+            return { type: 'seed', id: `seed_${crop}_${rarity}`, amount: amnt, icon: CROP_ICONS[crop], name: `Sem. ${crop} (${rarity})`, css: 'text-amber-500' };
         } else {
             const tool = seededRandom(gameSeedVal + 3) > 0.5 ? 'polvo_hada' : 'reloj_magico';
-            return { type: 'tool', id: tool, amount: 1, icon: TOOL_ICONS[tool], name: tool === 'polvo_hada' ? 'Polvo de Hada' : 'Reloj Mágico', css: 'text-pink-500' };
+            const amnt = Math.floor(seededRandom(gameSeedVal + 4) * 2) + 2;
+            return { type: 'tool', id: tool, amount: amnt, icon: TOOL_ICONS[tool], name: tool === 'polvo_hada' ? 'Polvo de Hada' : 'Reloj Mágico', css: 'text-pink-500' };
         }
     }
 
@@ -101,7 +103,17 @@ window.handleLogin = async function () {
     try {
         try { await signInWithEmailAndPassword(auth, `${userIn.toLowerCase()}@minigranja.com`, passIn); }
         catch (e) { if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') await createUserWithEmailAndPassword(auth, `${userIn.toLowerCase()}@minigranja.com`, passIn); else throw e; }
-    } catch (err) { playSound('error'); showNotification("Error", true); document.getElementById('btn-login').innerText = "Jugar"; }
+    } catch (err) {
+        playSound('error');
+        let msg = "Error";
+        if (err.code === 'auth/wrong-password') msg = "Contraseña incorrecta";
+        else if (err.code === 'auth/weak-password') msg = "La contraseña debe tener al menos 6 caracteres";
+        else if (err.code === 'auth/invalid-credential') msg = "Credenciales incorrectas";
+        else if (err.code === 'auth/email-already-in-use') msg = "El usuario ya existe";
+        else msg = err.message || "Error al conectar";
+        showNotification(msg, true);
+        document.getElementById('btn-login').innerText = "Jugar";
+    }
 };
 
 async function loadState() {

@@ -81,26 +81,37 @@
                 <span id="player-name-display"
                     class="text-xs font-bold text-gray-400 max-w-[80px] truncate text-right">Player</span>
             </div>
+            <div id="weather-banner"
+                class="hidden text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-600 px-2 py-1 rounded-lg text-center border-2 border-blue-200 mt-1 shadow-sm">
+                <!-- Weather info injected here -->
+            </div>
         </header>
 
-        <nav class="flex justify-center gap-1 mt-2 px-1 bg-transparent z-10 text-[9px] sm:text-[10px] sm:gap-2">
+        <nav
+            class="flex overflow-x-auto no-scrollbar gap-1 mt-2 px-1 bg-transparent z-10 text-[9px] sm:text-[10px] sm:gap-2 pb-1">
             <button onclick="changeMainTab('farm')" id="main-tab-farm"
-                class="bg-white p-2 rounded-2xl font-bold shadow-sm text-pink-500 border-2 border-pink-200 transition-all flex-1 text-center"><i
+                class="bg-white p-2 min-w-[64px] rounded-2xl font-bold shadow-sm text-pink-500 border-2 border-pink-200 transition-all flex-1 text-center"><i
                     class="fa-solid fa-house-chimney mb-1 block text-lg transition-transform hover:scale-110"></i>Granja</button>
             <button onclick="changeMainTab('shop')" id="main-tab-shop"
-                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
                     class="fa-solid fa-store mb-1 block text-lg transition-transform hover:scale-110"></i>Tienda</button>
-            <button onclick="changeMainTab('upgrades')" id="main-tab-upgrades"
-                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
-                    class="fa-solid fa-star mb-1 block text-lg transition-transform hover:scale-110 text-orange-400"></i>Mejoras</button>
-            <button onclick="changeMainTab('catalog')" id="main-tab-catalog"
-                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center hidden sm:block"><i
-                    class="fa-solid fa-book-open mb-1 block text-lg transition-transform hover:scale-110"></i>Catálogo</button>
+            <button onclick="changeMainTab('animals')" id="main-tab-animals"
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
+                    class="fa-solid fa-paw mb-1 block text-lg transition-transform hover:scale-110"></i>Animales</button>
+            <button onclick="changeMainTab('market')" id="main-tab-market"
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
+                    class="fa-solid fa-scale-balanced mb-1 block text-lg transition-transform hover:scale-110"></i>Mercado</button>
+            <button onclick="changeMainTab('quests')" id="main-tab-quests"
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center relative"><i
+                    class="fa-solid fa-list-check mb-1 block text-lg transition-transform hover:scale-110"></i>Misiones</button>
+            <button onclick="changeMainTab('leaderboard')" id="main-tab-leaderboard"
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
+                    class="fa-solid fa-trophy mb-1 block text-lg transition-transform hover:scale-110"></i>Ranking</button>
             <button onclick="changeMainTab('trade')" id="main-tab-trade"
-                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all relative flex-1 text-center"><i
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all relative flex-1 text-center"><i
                     class="fa-solid fa-handshake mb-1 block text-lg transition-transform hover:scale-110"></i>Trades</button>
             <button onclick="window.location.href='./games.html';"
-                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center bg-gradient-to-t hover:from-purple-50 hover:to-white"><i
+                class="bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center bg-gradient-to-t hover:from-purple-50 hover:to-white"><i
                     class="fa-solid fa-gamepad mb-1 block text-lg text-purple-400 transition-transform hover:scale-110"></i>Juegos</button>
         </nav>
 
@@ -213,6 +224,54 @@
                     <div id="trade-requests-out" class="flex flex-col gap-2"></div>
                 </div>
             </div>
+
+            <div id="section-quests" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <h2 class="text-xl font-black text-emerald-500 mb-1"><i
+                            class="fa-solid fa-list-check mr-2"></i>Misiones Diarias</h2>
+                    <p class="text-xs font-bold text-gray-500 mb-4 text-emerald-500/80">Se renuevan cada día.</p>
+                    <div id="quests-list" class="flex flex-col gap-3"></div>
+                </div>
+            </div>
+
+            <div id="section-animals" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <h2 class="text-xl font-black text-amber-500 mb-1"><i class="fa-solid fa-paw mr-2"></i>Mis
+                        Animalitos</h2>
+                    <p class="text-xs font-bold text-gray-500 mb-4 text-amber-500/80">Aliméntalos para obtener
+                        productos.</p>
+                    <div id="animals-grid" class="flex flex-col gap-3"></div>
+                    <div class="mt-4 border-t pt-4">
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Comprar Animales
+                        </h3>
+                        <div id="animals-shop" class="flex flex-col gap-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-leaderboard" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <h2 class="text-xl font-black text-yellow-500 mb-1"><i class="fa-solid fa-trophy mr-2"></i>Top 10
+                        Granjeros</h2>
+                    <p class="text-xs font-bold text-gray-500 mb-4 text-yellow-500/80">Basado en tu XP total.</p>
+                    <div id="leaderboard-list" class="flex flex-col gap-2"></div>
+                </div>
+            </div>
+
+            <div id="section-market" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full mb-2">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-xl font-black text-indigo-500"><i
+                                class="fa-solid fa-scale-balanced mr-2"></i>Mercado</h2>
+                        <button onclick="openPublishAuctionModal()"
+                            class="bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-indigo-600 shadow-sm">+
+                            Vender</button>
+                    </div>
+                    <p class="text-[10px] font-bold text-gray-500 text-indigo-500/80">El mercado global de jugadores.
+                    </p>
+                </div>
+                <div id="market-list" class="flex flex-col gap-3 pb-8"></div>
+            </div>
         </main>
     </div>
 
@@ -262,6 +321,30 @@
         </div>
     </div>
 
+    <div id="auction-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 hidden flex-col justify-end sm:justify-center items-center pb-0 sm:pb-0">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter relative">
+            <button onclick="closeModal('auction-modal')"
+                class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full text-gray-500"><i
+                    class="fa-solid fa-times"></i></button>
+            <h3 class="text-lg font-bold text-indigo-500 mb-2 text-center"><i
+                    class="fa-solid fa-scale-balanced mr-2"></i>Publicar Oferta</h3>
+            <p class="text-xs text-gray-500 text-center mb-4">Elige un cultivo Legendario o superior para vender a otros
+                jugadores.</p>
+            <div id="auction-items-list"
+                class="flex flex-col gap-2 max-h-40 overflow-y-auto mb-4 border rounded-xl p-2 bg-gray-50 no-scrollbar">
+            </div>
+
+            <div class="flex flex-col gap-2" id="auction-form" style="display:none;">
+                <label class="text-xs font-bold text-gray-600">Precio en Monedas (🪙):</label>
+                <input type="number" id="auction-price"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold outline-none focus:border-indigo-300"
+                    placeholder="Ej: 5000">
+                <button onclick="publishAuction()" id="auction-publish-btn"
+                    class="bg-indigo-500 text-white font-black py-3 rounded-xl hover:bg-indigo-600 mt-2 shadow-sm transition">Publicar</button>
+            </div>
+        </div>
+    </div>
     <div id="live-trade-modal"
         class="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-[100] hidden flex-col justify-center items-center p-2">
     </div>

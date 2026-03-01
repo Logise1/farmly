@@ -96,9 +96,55 @@ const UPGRADES_DEF = {
     price: { id: 'price', name: 'Negociante', desc: '+5% monedas extra al vender', icon: '💰', baseCost: 2000, mult: 1.8, maxLvl: 10, css: 'text-yellow-500 bg-yellow-100' }
 };
 
+const WEATHER_TYPES = [
+    { id: 'sunny', name: 'Día Soleado', desc: 'Día perfecto.', icon: '☀️', speedMod: 1, priceMod: 1, css: 'text-yellow-600 bg-yellow-100 border-yellow-200' },
+    { id: 'rainy', name: 'Tormenta', desc: 'Crecen un 15% más rápido.', icon: '🌧️', speedMod: 0.85, priceMod: 1, css: 'text-blue-600 bg-blue-100 border-blue-200' },
+    { id: 'drought', name: 'Sequía', desc: 'Ventas +15%, pero crecen lento.', icon: '🏜️', speedMod: 1.2, priceMod: 1.15, css: 'text-orange-600 bg-orange-100 border-orange-200' },
+    { id: 'magic', name: 'Lluvia Estelar', desc: 'Todo crece al doble de vel.', icon: '✨', speedMod: 0.5, priceMod: 1, css: 'text-purple-600 bg-purple-100 border-purple-200' }
+];
+
+function getCurrentWeather() {
+    const daySeed = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+    return WEATHER_TYPES[Math.floor(seededRandom(daySeed) * WEATHER_TYPES.length)];
+}
+
+const QUESTS_DEF = [
+    { id: 'harvest_trigo', title: 'Cosecha 5 Trigos', req: 5, xp: 100, coins: 50, icon: '🌾', check: (type, k) => type === 'harvest' && k.includes('trigo') },
+    { id: 'plant_10', title: 'Planta 10 semillas', req: 10, xp: 150, coins: 100, icon: '🌱', check: (type) => type === 'plant' },
+    { id: 'sell_20', title: 'Vende 20 cultivos', req: 20, xp: 200, coins: 150, icon: '💰', check: (type) => type === 'sell' },
+    { id: 'use_tool', title: 'Usa 3 herramientas', req: 3, xp: 50, coins: 50, icon: '🧪', check: (type) => type === 'tool' },
+    { id: 'harvest_mitico', title: 'Cosecha 1 Mítico/Leyenda', req: 1, xp: 500, coins: 300, icon: '✨', check: (type, k) => type === 'harvest' && (k.includes('mitico') || k.includes('legendario')) }
+];
+
+function getDailyQuests() {
+    const daySeed = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+    const qs = [];
+    for (let i = 0; i < 3; i++) {
+        let qIdx = Math.floor(seededRandom(daySeed + i * 10) * QUESTS_DEF.length);
+        qs.push({ ...QUESTS_DEF[qIdx], uniqueId: `${daySeed}_${i}` });
+    }
+    return qs;
+}
+
+function processQuest(type, key) {
+    const qs = getDailyQuests();
+    let updated = false;
+    qs.forEach(q => {
+        if (q.check(type, key)) {
+            const curAmt = state.questProgress[q.uniqueId] || 0;
+            if (curAmt < q.req) {
+                state.questProgress[q.uniqueId] = curAmt + 1;
+                updated = true;
+                if (curAmt + 1 >= q.req) showNotification(`Misión Completada: ${q.title}! (+${q.coins}🪙)`, false);
+            }
+        }
+    });
+    if (updated) { saveState(); renderQuests(); }
+}
+
 // ESTADO GLOBAL
 let currentUser = null, username = "Player";
-let state = { coins: 100, level: 1, xp: 0, inventory: { 'seed_trigo_comun': 4 }, tools: {}, plots: Array(16).fill(null).map((_, i) => ({ id: i, seedItem: null, plantedAt: null })), shopPurchases: {}, toolsPurchases: {}, longPurchases: {}, upgrades: { speed: 0, yield: 0, price: 0 } };
+let state = { coins: 100, level: 1, xp: 0, inventory: { 'seed_trigo_comun': 4 }, tools: {}, plots: Array(16).fill(null).map((_, i) => ({ id: i, seedItem: null, plantedAt: null })), animals: [], questProgress: {}, shopPurchases: {}, toolsPurchases: {}, longPurchases: {}, upgrades: { speed: 0, yield: 0, price: 0 } };
 let saveDocRef = null;
 let currentCycleId = 0, currentToolsCycleId = 0, currentLongCycleId = 0, globalShopItems = [], globalToolsItems = [], globalLongItems = [], selectedPlot = null;
 const LONG_CYCLE_MS = 12 * 60 * 60 * 1000;
@@ -123,6 +169,10 @@ function generateItemData(fullId) {
         if (state.upgrades.speed > 0) finalTime = finalTime * (1 - (state.upgrades.speed * 0.05));
         if (state.upgrades.price > 0 && type === 'crop') finalSell = finalSell * (1 + (state.upgrades.price * 0.05));
     }
+
+    const weather = getCurrentWeather();
+    finalTime *= weather.speedMod;
+    if (type === 'crop') finalSell *= weather.priceMod;
 
     return {
         id: fullId, type, baseId, rarityId, name: `${type === 'seed' ? 'Semilla' : 'Cosecha'} ${base.name}`,
@@ -176,7 +226,7 @@ function generateLongShop() {
         currentLongCycleId = longCycleId; globalLongItems = [];
         const validBases = CROP_KEYS_ORDER.filter(k => BASE_CROPS[k].minLvl <= state.level + 2);
         if (validBases.length > 0) {
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 10; i++) {
                 let rand1 = seededRandom(longCycleId * 30 + i + state.level * 10);
                 let rand2 = seededRandom(longCycleId * 40 + i + state.level * 10);
                 let baseId = validBases[Math.floor(rand1 * validBases.length)];
@@ -198,7 +248,17 @@ window.handleLogin = async function () {
     try {
         try { await signInWithEmailAndPassword(auth, `${userIn.toLowerCase()}@minigranja.com`, passIn); }
         catch (e) { if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') await createUserWithEmailAndPassword(auth, `${userIn.toLowerCase()}@minigranja.com`, passIn); else throw e; }
-    } catch (err) { playSound('error'); showNotification("Error: " + err.message, true); document.getElementById('btn-login').innerText = "Jugar"; }
+    } catch (err) {
+        playSound('error');
+        let msg = "Error";
+        if (err.code === 'auth/wrong-password') msg = "Contraseña incorrecta";
+        else if (err.code === 'auth/weak-password') msg = "La contraseña debe tener al menos 6 caracteres";
+        else if (err.code === 'auth/invalid-credential') msg = "Credenciales incorrectas";
+        else if (err.code === 'auth/email-already-in-use') msg = "El usuario ya existe";
+        else msg = err.message || "Error al conectar";
+        showNotification(msg, true);
+        document.getElementById('btn-login').innerText = "Jugar";
+    }
 };
 
 window.logout = function () { playSound('click'); signOut(auth); };
@@ -225,11 +285,15 @@ async function loadState() {
         const d = snap.data();
         state.coins = d.coins ?? state.coins; state.level = d.level ?? state.level; state.xp = d.xp ?? state.xp;
         state.inventory = d.inventory ?? state.inventory; state.tools = d.tools ?? {}; state.plots = d.plots ?? state.plots;
+        state.animals = d.animals ?? []; state.questProgress = d.questProgress ?? {};
         state.shopPurchases = d.shopPurchases ?? {}; state.toolsPurchases = d.toolsPurchases ?? {}; state.longPurchases = d.longPurchases ?? {};
         state.upgrades = d.upgrades ?? { speed: 0, yield: 0, price: 0 };
     } else { saveState(); }
 }
-function saveState() { if (saveDocRef) setDoc(saveDocRef, state).catch(console.error); }
+function saveState() {
+    if (saveDocRef) setDoc(saveDocRef, state).catch(console.error);
+    if (currentUser) setDoc(doc(db, 'artifacts', APP_ID, 'leaderboard', currentUser.uid), { name: username, xp: state.xp, level: state.level, timestamp: Date.now() }, { merge: true }).catch(e => { });
+}
 
 function getRequiredXp(lvl) { return lvl * 50 + Math.pow(lvl, 2) * 15; }
 
@@ -337,19 +401,26 @@ function renderTradesUI() {
 
 window.changeMainTab = function (tab) {
     playSound('click');
-    ['farm', 'shop', 'trade', 'catalog', 'upgrades'].forEach(t => {
-        document.getElementById(`section-${t}`).classList.add('hidden'); document.getElementById(`section-${t}`).classList.remove('flex');
+    ['farm', 'shop', 'trade', 'catalog', 'upgrades', 'quests', 'animals', 'leaderboard', 'market'].forEach(t => {
+        const sec = document.getElementById(`section-${t}`);
+        if (sec) { sec.classList.add('hidden'); sec.classList.remove('flex'); }
         const btn = document.getElementById(`main-tab-${t}`);
         if (btn) {
-            if (t === tab) btn.className = "bg-white p-2 rounded-2xl font-bold shadow-[0_5px_15px_rgba(236,72,153,0.15)] text-pink-500 border-2 border-pink-200 transition-all flex-1 text-center transform scale-[1.05]";
-            else btn.className = "bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white inset-x-0 transition-all flex-1 text-center";
+            if (t === tab) btn.className = "bg-white p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_5px_15px_rgba(236,72,153,0.15)] text-pink-500 border-2 border-pink-200 transition-all flex-1 text-center transform scale-[1.05]";
+            else btn.className = "bg-white/60 p-2 min-w-[64px] rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white inset-x-0 transition-all flex-1 text-center relative";
         }
     });
-    document.getElementById(`section-${tab}`).classList.remove('hidden'); document.getElementById(`section-${tab}`).classList.add('flex');
+    const activeSec = document.getElementById(`section-${tab}`);
+    if (activeSec) { activeSec.classList.remove('hidden'); activeSec.classList.add('flex'); }
+
     if (tab === 'farm') { renderPlots(); renderInventory(); }
     if (tab === 'shop') { renderShopBuy(); renderShopTools(); renderShopSell(); renderShopLong(); }
     if (tab === 'catalog') { renderCatalog(); }
     if (tab === 'upgrades') { renderUpgrades(); }
+    if (tab === 'quests') { renderQuests(); }
+    if (tab === 'animals') { renderAnimals(); }
+    if (tab === 'leaderboard') { renderLeaderboardInit(); }
+    if (tab === 'market') { renderMarketInit(); }
     if (tab === 'trade') { renderTradesUI(); document.getElementById('trade-notif-badge').classList.add('hidden'); }
 }
 
@@ -376,6 +447,7 @@ window.handlePlotClick = function (index) {
             if (state.upgrades.yield > 0 && Math.random() < (state.upgrades.yield * 0.1)) { amt = 2; showNotification("¡Cosecha Doble! x2", false); }
             state.inventory[plot.seedItem.replace('seed_', 'crop_')] = (state.inventory[plot.seedItem.replace('seed_', 'crop_')] || 0) + amt;
             addXp(item.xp); if (amt === 1) showNotification(`Cosechaste ${item.name}`);
+            processQuest('harvest', plot.seedItem);
             state.plots[index] = { id: index, seedItem: null, plantedAt: null };
             saveState(); renderPlots(); renderInventory();
         } else { playSound('click'); selectedPlot = index; openToolModal(); }
@@ -395,10 +467,23 @@ window.sellItemToSystem = function (fullId) {
     if (!state.inventory[fullId] || state.inventory[fullId] <= 0) return;
     const item = generateItemData(fullId); if (!item) return;
     playSound('sell'); state.inventory[fullId]--; if (state.inventory[fullId] <= 0) delete state.inventory[fullId];
-    state.coins += item.sell; saveState(); renderHeader(); renderShopSell(); renderInventory(); showNotification(`Vendiste ${item.name} (+${item.sell}🪙)`);
+    state.coins += item.sell; processQuest('sell', fullId); saveState(); renderHeader(); renderShopSell(); renderInventory(); showNotification(`Vendiste ${item.name} (+${item.sell}🪙)`);
 }
 
-function renderAll() { renderHeader(); renderPlots(); renderInventory(); renderShopBuy(); renderShopTools(); renderShopSell(); renderShopLong(); renderCatalog(); renderUpgrades(); }
+function renderAll() {
+    renderHeader(); renderPlots(); renderInventory(); renderShopBuy(); renderShopTools(); renderShopSell();
+    renderShopLong(); renderCatalog(); renderUpgrades(); renderQuests(); renderWeather(); renderAnimals(); renderLeaderboardInit(); renderMarketInit();
+}
+
+function renderWeather() {
+    const w = getCurrentWeather();
+    const banner = document.getElementById('weather-banner');
+    if (banner) {
+        banner.innerHTML = `<i class="fa-solid fa-cloud-sun mr-1"></i>${w.icon} ${w.name}: ${w.desc}`;
+        banner.className = `text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg text-center border-2 mt-1 shadow-sm ${w.css}`;
+        banner.classList.remove('hidden');
+    }
+}
 
 function renderHeader() {
     document.getElementById('coins-display').innerText = state.coins; document.getElementById('level-display').innerText = state.level;
@@ -606,6 +691,7 @@ window.openPlantModal = function () {
         el.onclick = () => {
             playSound('plant'); state.inventory[k]--; if (state.inventory[k] <= 0) delete state.inventory[k];
             state.plots[selectedPlot] = { id: selectedPlot, seedItem: k, plantedAt: Date.now() };
+            processQuest('plant', k);
             saveState(); renderPlots(); renderInventory(); closeModal('plant-modal');
         }; list.appendChild(el);
     });
@@ -646,6 +732,7 @@ window.applyToolToPlot = function (plotIndex, toolKey) {
     if (state.tools[toolKey] <= 0) delete state.tools[toolKey];
 
     plot.plantedAt -= tool.timeReduc;
+    processQuest('tool', toolKey);
 
     saveState();
     renderPlots();
@@ -796,6 +883,349 @@ window.toggleTradeConfirm = async function () {
     const trade = (await getDoc(docRef)).data();
     const confirmField = (trade.senderName === username) ? 'senderConfirmed' : 'receiverConfirmed';
     await updateDoc(docRef, { [confirmField]: !trade[confirmField] });
+}
+
+// ================= NEW FEATURES =================
+
+// --- MISIONES DIARIAS ---
+window.claimQuest = function (qId) {
+    const qs = getDailyQuests();
+    const q = qs.find(x => x.uniqueId === qId);
+    if (!q) return;
+    const curAmt = state.questProgress[qId] || 0;
+    if (curAmt >= q.req && curAmt < q.req + 999) {
+        playSound('win');
+        state.coins += q.coins;
+        addXp(q.xp);
+        state.questProgress[qId] = q.req + 999; // Marcado como reclamado
+        saveState(); renderHeader(); renderQuests();
+        showNotification("¡Recompensa Reclamada!");
+    }
+}
+
+window.renderQuests = function () {
+    const list = document.getElementById('quests-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const qs = getDailyQuests();
+    qs.forEach(q => {
+        const curAmt = state.questProgress[q.uniqueId] || 0;
+        const isCompleted = curAmt >= q.req;
+        const isClaimed = curAmt >= q.req + 999;
+        const p = Math.min(100, (curAmt / q.req) * 100);
+
+        let actBtn = `<button disabled class="bg-gray-100 text-gray-400 font-bold px-3 py-1 text-[10px] rounded-lg border border-transparent shadow-sm whitespace-nowrap">${curAmt}/${q.req}</button>`;
+        if (isClaimed) actBtn = `<button disabled class="bg-gray-200 text-gray-500 font-bold px-3 py-1 text-[10px] rounded-lg shadow-sm whitespace-nowrap"><i class="fa-solid fa-check"></i></button>`;
+        else if (isCompleted) actBtn = `<button onclick="claimQuest('${q.uniqueId}')" class="bg-emerald-400 hover:bg-emerald-500 text-white font-bold px-3 py-1 text-[10px] rounded-lg shadow-sm animate-pulse whitespace-nowrap flex-shrink-0">¡Cobrar!</button>`;
+
+        list.innerHTML += `
+            <div class="bg-white p-3 rounded-2xl border-2 border-emerald-50 shadow-sm flex items-center justify-between gap-3 ${isClaimed ? 'opacity-50' : ''}">
+                <div class="flex items-center gap-3 w-full">
+                    <div class="w-10 h-10 bg-emerald-100 text-2xl flex items-center justify-center rounded-xl flex-shrink-0">${q.icon}</div>
+                    <div class="w-full">
+                        <div class="font-bold text-gray-700 text-xs mb-0.5">${q.title}</div>
+                        <div class="text-[9px] font-bold text-emerald-600 mb-1">+${q.xp} XP | +${q.coins} 🪙</div>
+                        <div class="w-full bg-emerald-100 h-1.5 rounded-full"><div class="bg-emerald-400 h-full rounded-full transition-all" style="width: ${p}%"></div></div>
+                    </div>
+                </div>
+                ${actBtn}
+            </div>
+        `;
+    });
+}
+
+// --- ANIMALES ---
+const ANIMALS_DEF = {
+    chicken: { id: 'chicken', name: 'Gallina', icon: '🐔', cost: 1000, food: 'crop_maiz', foodName: 'Maíz', gives: 'huevo', givesName: 'Huevo', givesIcon: '🥚', time: 60 * 60 * 1000, sell: 150 },
+    cow: { id: 'cow', name: 'Vaca', icon: '🐮', cost: 5000, food: 'crop_trigo', foodName: 'Trigo', gives: 'leche', givesName: 'Leche', givesIcon: '🥛', time: 4 * 60 * 60 * 1000, sell: 800 },
+    pig: { id: 'pig', name: 'Cerdo', icon: '🐷', cost: 15000, food: 'crop_zanahoria', foodName: 'Zanahoria', gives: 'trufa', givesName: 'Trufa', givesIcon: '🍄', time: 12 * 60 * 60 * 1000, sell: 3000 }
+};
+
+window.buyAnimal = function (id) {
+    const a = ANIMALS_DEF[id];
+    if (state.coins < a.cost) return showNotification("Monedas insuficientes", true);
+    if (state.animals.length >= 6) return showNotification("Límite de animales alcanzado (6)", true);
+    playSound('buy');
+    state.coins -= a.cost;
+    state.animals.push({ type: id, fedAt: null });
+    saveState(); renderHeader(); renderAnimals();
+    showNotification(`Compraste una ${a.name}`);
+}
+
+window.feedAnimal = function (idx) {
+    const a = state.animals[idx];
+    const def = ANIMALS_DEF[a.type];
+    if (state.inventory[def.food] && state.inventory[def.food] > 0) {
+        playSound('plant');
+        state.inventory[def.food]--;
+        if (state.inventory[def.food] <= 0) delete state.inventory[def.food];
+        a.fedAt = Date.now();
+        saveState(); renderAnimals(); renderInventory(); showNotification(`Alimentaste a la ${def.name}`);
+    } else {
+        playSound('error');
+        showNotification(`Necesitas ${def.foodName} para alimentarla`, true);
+    }
+}
+
+window.collectAnimal = function (idx) {
+    const a = state.animals[idx];
+    const def = ANIMALS_DEF[a.type];
+    if (a.fedAt && (Date.now() - a.fedAt) >= def.time) {
+        playSound('harvest');
+        a.fedAt = null;
+        state.coins += def.sell; // Direct sell for simplicity
+        addXp(50);
+        saveState(); renderHeader(); renderAnimals(); showNotification(`Recogiste ${def.givesName} (+${def.sell}🪙)`);
+    }
+}
+
+window.renderAnimals = function () {
+    const grid = document.getElementById('animals-grid');
+    const shop = document.getElementById('animals-shop');
+    if (!grid || !shop) return;
+
+    // Render Farm Animals
+    grid.innerHTML = '';
+    if (state.animals.length === 0) grid.innerHTML = '<p class="text-xs text-gray-400 text-center col-span-2">No tienes animales.</p>';
+    state.animals.forEach((a, i) => {
+        const def = ANIMALS_DEF[a.type];
+        const elapsed = a.fedAt ? Date.now() - a.fedAt : 0;
+        const ready = a.fedAt && elapsed >= def.time;
+
+        let statusHtml = '';
+        if (!a.fedAt) statusHtml = `<button onclick="feedAnimal(${i})" class="bg-amber-100 text-amber-700 font-bold px-3 py-1.5 rounded-lg text-[10px] w-full mt-2 hover:bg-amber-200">Dar 1 ${def.foodName}</button>`;
+        else if (ready) statusHtml = `<button onclick="collectAnimal(${i})" class="bg-green-500 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] w-full mt-2 animate-pulse hover:bg-green-600">Recoger ${def.givesName}</button>`;
+        else {
+            const p = Math.min(100, (elapsed / def.time) * 100);
+            statusHtml = `<div class="mt-2 text-center w-full"><span class="text-[9px] font-bold text-gray-500 mb-0.5 block">${formatTimeRemaining(def.time - elapsed)}</span><div class="w-full bg-gray-200 h-1.5 rounded-full"><div class="bg-amber-400 h-full rounded-full" style="width: ${p}%"></div></div></div>`;
+        }
+
+        grid.innerHTML += `
+            <div class="bg-white p-3 rounded-2xl border-2 border-amber-100 shadow-sm flex flex-col items-center">
+                <span class="text-4xl relative ${ready ? 'animate-bounce' : ''}">${def.icon} ${ready ? `<span class="absolute -top-2 -right-2 text-xl drop-shadow-md">${def.givesIcon}</span>` : ''}</span>
+                <span class="font-bold text-xs mt-1 text-gray-700">${def.name}</span>
+                ${statusHtml}
+            </div>
+        `;
+    });
+
+    // Render Shop
+    shop.innerHTML = '';
+    Object.values(ANIMALS_DEF).forEach(def => {
+        shop.innerHTML += `
+            <div class="bg-gray-50 p-2 rounded-xl flex items-center justify-between border border-gray-200">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">${def.icon}</span>
+                    <div>
+                        <div class="font-bold text-[10px] text-gray-700">${def.name}</div>
+                        <div class="text-[9px] text-gray-500">Da: ${def.givesName}</div>
+                    </div>
+                </div>
+                <button onclick="buyAnimal('${def.id}')" class="bg-white border text-gray-700 font-bold px-2 py-1 rounded-lg text-[10px] shadow-sm hover:bg-gray-100">${def.cost} 🪙</button>
+            </div>
+        `;
+    });
+}
+
+// --- LEADERBOARDS ---
+let leaderboardUnsub = null;
+window.renderLeaderboardInit = function () {
+    if (leaderboardUnsub) leaderboardUnsub();
+    const list = document.getElementById('leaderboard-list');
+    if (!list) return;
+
+    // Sub to top 10 players based on xp
+    leaderboardUnsub = onSnapshot(query(collection(db, 'artifacts', APP_ID, 'leaderboard')), (snap) => {
+        let players = snap.docs.map(d => d.data());
+        players.sort((a, b) => b.xp - a.xp);
+        players = players.slice(0, 10);
+
+        list.innerHTML = '';
+        if (players.length === 0) list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin datos todavía.</p>';
+        players.forEach((p, i) => {
+            const isMe = p.name === username;
+            let medal = `<span class="font-black text-gray-400 w-6 text-center">#${i + 1}</span>`;
+            if (i === 0) medal = `<span class="text-xl w-6 text-center">🏆</span>`;
+            if (i === 1) medal = `<span class="text-xl w-6 text-center">🥈</span>`;
+            if (i === 2) medal = `<span class="text-xl w-6 text-center">🥉</span>`;
+
+            list.innerHTML += `
+                <div class="bg-white p-3 rounded-xl border ${isMe ? 'border-yellow-400 bg-yellow-50 shadow-md transform scale-[1.02]' : 'border-gray-100 shadow-sm'} flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        ${medal}
+                        <div>
+                            <div class="text-[11px] font-black ${isMe ? 'text-yellow-600' : 'text-gray-700'}">${p.name}</div>
+                            <div class="text-[9px] font-bold text-gray-400">Nivel ${p.level || 1}</div>
+                        </div>
+                    </div>
+                    <div class="bg-blue-100 text-blue-600 font-black text-[10px] px-2 py-1 rounded-lg border border-blue-200 shadow-inner">${p.xp} XP</div>
+                </div>
+            `;
+        });
+    });
+}
+
+// --- MERCADO (AUCTIONS) ---
+let marketUnsub = null;
+window.renderMarketInit = function () {
+    if (marketUnsub) marketUnsub();
+    const list = document.getElementById('market-list');
+    if (!list) return;
+
+    marketUnsub = onSnapshot(collection(db, 'artifacts', APP_ID, 'auctions'), (snap) => {
+        let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        list.innerHTML = '';
+        if (items.length === 0) list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">El mercado está vacío. ¡Publica algo!</p>';
+        items.forEach(a => {
+            const isMy = a.sellerName === username;
+            const itemDef = generateItemData(a.item);
+            if (!itemDef) return;
+
+            list.innerHTML += `
+                <div class="bg-white p-3 rounded-2xl border-2 ${isMy ? 'border-indigo-200 bg-indigo-50/30' : 'border-gray-100'} shadow-sm flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 w-3/4">
+                        <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center text-3xl ${itemDef.cssClass} bg-white border rounded-xl shadow-inner relative">
+                            ${itemDef.icon}
+                        </div>
+                        <div class="truncate w-full">
+                            <div class="font-bold text-gray-800 text-xs truncate drop-shadow-sm">${itemDef.name}</div>
+                            <div class="font-bold text-[9px] text-gray-400 mt-0.5"><i class="fa-solid fa-user mr-1"></i>${a.sellerName}</div>
+                        </div>
+                    </div>
+                    <button onclick="${isMy ? `cancelAuction('${a.id}')` : `buyAuction('${a.id}', ${a.price}, '${a.sellerName}', '${a.item}')`}" 
+                        class="${isMy ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-indigo-500 text-white hover:bg-indigo-600'} font-bold px-3 py-2 rounded-xl text-xs transition-transform hover:scale-105 shadow-sm whitespace-nowrap flex-shrink-0">
+                        ${isMy ? '<i class="fa-solid fa-trash"></i>' : `${a.price} 🪙`}
+                    </button>
+                </div>
+            `;
+        });
+
+        // Also check if I have earnings from sold items
+        checkMarketEarnings();
+    });
+}
+
+async function checkMarketEarnings() {
+    if (!currentUser) return;
+    const snap = await collection(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'earnings');
+    onSnapshot(snap, (s) => {
+        s.docs.forEach(async doc => {
+            const data = doc.data();
+            playSound('win');
+            state.coins += data.coins;
+            saveState(); renderHeader();
+            showNotification(`¡Alguien compró tu oferta! (+${data.coins}🪙)`, false);
+            await deleteDoc(doc.ref);
+        });
+    });
+}
+
+window.openPublishAuctionModal = function () {
+    playSound('click');
+    const list = document.getElementById('auction-items-list');
+    const form = document.getElementById('auction-form');
+    list.innerHTML = '';
+
+    let hasHighTier = false;
+    Object.keys(state.inventory).forEach(k => {
+        if (!k.startsWith('crop_')) return;
+        const item = generateItemData(k);
+        // Sólo dejar subir épico o superior
+        if (item.rarityId === 'comun' || item.rarityId === 'raro') return;
+        hasHighTier = true;
+
+        const count = state.inventory[k];
+        list.innerHTML += `
+            <div onclick="selectAuctionItem('${k}', ${item.sell})" id="auction-item-${k}" class="auction-select-item cursor-pointer bg-white p-2 rounded-xl border-2 border-transparent hover:border-indigo-300 flex items-center justify-between gap-2 shadow-sm transition">
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-700">
+                    <span class="text-xl">${item.icon}</span> ${item.name}
+                </div>
+                <div class="text-[10px] bg-gray-100 px-2 py-1 rounded-lg">Tienes: ${count}</div>
+            </div>
+        `;
+    });
+
+    if (!hasHighTier) {
+        list.innerHTML = '<p class="text-xs text-gray-400 text-center p-2">No tienes cultivos Épicos o superiores para vender.</p>';
+        form.style.display = 'none';
+    } else {
+        form.style.display = 'none';
+    }
+
+    window.selectedAuctionItem = null;
+    document.getElementById('auction-modal').classList.remove('hidden');
+    document.getElementById('auction-modal').classList.add('flex');
+}
+
+window.selectAuctionItem = function (k, suggPrice) {
+    playSound('click');
+    document.querySelectorAll('.auction-select-item').forEach(e => e.classList.remove('border-indigo-500', 'bg-indigo-50'));
+    document.getElementById(`auction-item-${k}`).classList.add('border-indigo-500', 'bg-indigo-50');
+    window.selectedAuctionItem = k;
+    document.getElementById('auction-form').style.display = 'flex';
+    document.getElementById('auction-price').value = suggPrice * 2; // Suggest 2x base price
+}
+
+window.publishAuction = async function () {
+    if (!window.selectedAuctionItem || !state.inventory[window.selectedAuctionItem]) return;
+    const price = parseInt(document.getElementById('auction-price').value);
+    if (!price || isNaN(price) || price <= 0) return showNotification("Precio inválido", true);
+
+    playSound('click');
+    document.getElementById('auction-publish-btn').innerText = "Publicando...";
+
+    state.inventory[window.selectedAuctionItem]--;
+    if (state.inventory[window.selectedAuctionItem] <= 0) delete state.inventory[window.selectedAuctionItem];
+    saveState(); renderInventory();
+
+    await addDoc(collection(db, 'artifacts', APP_ID, 'auctions'), {
+        item: window.selectedAuctionItem,
+        price: price,
+        sellerName: username,
+        sellerUid: currentUser.uid,
+        createdAt: Date.now()
+    });
+
+    document.getElementById('auction-publish-btn').innerText = "Publicar";
+    closeModal('auction-modal');
+    showNotification("¡Oferta publicada exitosamente!");
+}
+
+window.buyAuction = async function (auctionId, price, sellerName, itemKey) {
+    if (state.coins < price) return showNotification("Monedas insuficientes", true);
+    playSound('buy');
+
+    // Optimistic local update
+    state.coins -= price;
+    state.inventory[itemKey.replace('crop_', 'seed_')] = (state.inventory[itemKey.replace('crop_', 'seed_')] || 0) + 1; // Wait, buying a seed or crop? We put crop in market, so buy gets crop.
+
+    // correction: items in market are crops. Add crop.
+    state.inventory[itemKey] = (state.inventory[itemKey] || 0) + 1;
+    saveState(); renderHeader(); renderInventory(); renderMarketInit();
+
+    showNotification(`¡Compraste de ${sellerName}!`);
+
+    // Cloud update
+    const aDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'auctions', auctionId));
+    if (aDoc.exists()) {
+        const d = aDoc.data();
+        await deleteDoc(aDoc.ref);
+        // Pay seller
+        const earningsRef = collection(db, 'artifacts', APP_ID, 'users', d.sellerUid, 'earnings');
+        await addDoc(earningsRef, { coins: d.price, timestamp: Date.now() });
+    }
+}
+
+window.cancelAuction = async function (auctionId) {
+    playSound('click');
+    const aDoc = await getDoc(doc(db, 'artifacts', APP_ID, 'auctions', auctionId));
+    if (aDoc.exists()) {
+        const d = aDoc.data();
+        state.inventory[d.item] = (state.inventory[d.item] || 0) + 1;
+        saveState(); renderInventory();
+        await deleteDoc(aDoc.ref);
+        showNotification("Subasta cancelada, objeto recuperado.");
+    }
 }
 
 async function executeTrade(trade) {
