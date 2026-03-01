@@ -37,16 +37,16 @@ if __name__ == "__main__":
     # Nos situamos en la misma carpeta que este script
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Procesar farm.html
+    # Procesar index.html
     process_file(
-        os.path.join(base_dir, "farm.html"),
+        os.path.join(base_dir, "index.html"),
         os.path.join(base_dir, "farm_style.css"),
         os.path.join(base_dir, "farm_script.js")
     )
     
-    # Procesar farmgames.html
+    # Procesar games.html
     process_file(
-        os.path.join(base_dir, "farmgames.html"),
+        os.path.join(base_dir, "games.html"),
         os.path.join(base_dir, "farmgames_style.css"),
         os.path.join(base_dir, "farmgames_script.js")
     )
