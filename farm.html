@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Farmly 🌸</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="farm_style.css">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fff0f5;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='%23e4a2b8' fill-opacity='0.4'%3E%3Cpath d='M12 0h18v6h6v6h6v18h-6v6h-6v6H12v-6H6v-6H0V12h6V6h6V0zm12 6h-6v6h-6v6H6v6h6v6h6v6h6v-6h6v-6h6v-6h-6v-6h-6V6zm-6 12h6v6h-6v-6zm24 24h6v6h-6v-6z'%3E%3C/path%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        #game-container {
+            background-color: #fff0f5;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='%23e4a2b8' fill-opacity='0.4'%3E%3Cpath d='M12 0h18v6h6v6h6v18h-6v6h-6v6H12v-6H6v-6H0V12h6V6h6V0zm12 6h-6v6h-6v6H6v6h6v6h6v6h6v-6h6v-6h6v-6h-6v-6h-6V6zm-6 12h6v6h-6v-6zm24 24h6v6h-6v-6z'%3E%3C/path%3E%3C/g%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+
+<body class="text-gray-700 h-screen flex flex-col overflow-hidden relative" id="game-container">
+
+    <!-- SPLASH SCREEN -->
+    <div id="splash-screen" class="absolute inset-0 bg-pink-100 z-[200] flex flex-col justify-center items-center">
+        <div class="text-6xl animate-bounce mb-4">🌸</div>
+        <h1 class="text-5xl font-black text-pink-400 tracking-tight">Farmly</h1>
+        <p class="text-pink-300 font-bold mt-2 animate-pulse">Cargando tu granjita...</p>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen"
+        class="hidden absolute inset-0 bg-pink-50 z-[100] flex flex-col justify-center items-center p-6 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
+        <div
+            class="bg-white/90 backdrop-blur p-8 rounded-[3rem] shadow-[0_10px_40px_-10px_rgba(236,72,153,0.3)] max-w-sm w-full border-4 border-white text-center">
+            <div class="text-5xl mb-2">🌱</div>
+            <h1 class="text-4xl font-black text-pink-400 mb-1">Farmly</h1>
+            <p class="text-gray-400 mb-6 font-bold text-sm">Tu granja más tierna 💖</p>
+            <input type="text" id="auth-user" placeholder="Usuario"
+                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-3 font-bold text-gray-700 outline-none focus:border-pink-300">
+            <input type="password" id="auth-pass" placeholder="Contraseña"
+                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 font-bold text-gray-700 outline-none focus:border-pink-300">
+            <button onclick="handleLogin()" id="btn-login"
+                class="w-full bg-pink-400 text-white font-black text-lg py-3 rounded-xl hover:bg-pink-500 transition-colors shadow-lg mb-3">Jugar</button>
+        </div>
+    </div>
+
+    <div id="app-screen" class="hidden flex-col h-full w-full">
+        <header class="bg-white/90 backdrop-blur-md shadow-sm p-3 rounded-b-3xl z-10 flex flex-col gap-2 relative">
+            <div id="trade-notif-badge"
+                class="absolute -bottom-2 right-4 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden animate-pulse shadow-md z-20">
+                ¡Nuevo Trade!</div>
+            <div class="flex justify-between items-center">
+                <div
+                    class="bg-yellow-100 text-yellow-600 px-3 py-1.5 rounded-full font-bold shadow-sm border border-yellow-200 flex items-center gap-2">
+                    <i class="fa-solid fa-coins"></i><span id="coins-display">0</span>
+                </div>
+                <div class="flex gap-2 relative z-50">
+                    <button onclick="toggleFullscreen()"
+                        class="bg-gray-100 text-gray-600 w-8 h-8 rounded-full flex justify-center items-center hover:bg-gray-200 shadow-sm z-50"><i
+                            class="fa-solid fa-expand"></i></button>
+                    <button onclick="logout()"
+                        class="bg-red-100 text-red-500 w-8 h-8 rounded-full flex justify-center items-center hover:bg-red-200 shadow-sm z-50"><i
+                            class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-400 text-white font-black w-8 h-8 rounded-full flex items-center justify-center shadow-md text-sm"
+                    id="level-display">1</div>
+                <div class="flex-1">
+                    <div class="w-full bg-blue-100 rounded-full h-2 overflow-hidden shadow-inner relative">
+                        <div id="xp-bar" class="bg-blue-400 h-full rounded-full transition-all duration-500"
+                            style="width: 0%"></div>
+                    </div>
+                    <p class="text-[9px] font-bold text-blue-400 mt-0.5 text-center" id="xp-text">0/50 XP</p>
+                </div>
+                <span id="player-name-display"
+                    class="text-xs font-bold text-gray-400 max-w-[80px] truncate text-right">Player</span>
+            </div>
+        </header>
+
+        <nav class="flex justify-center gap-1 mt-2 px-1 bg-transparent z-10 text-[9px] sm:text-[10px] sm:gap-2">
+            <button onclick="changeMainTab('farm')" id="main-tab-farm"
+                class="bg-white p-2 rounded-2xl font-bold shadow-sm text-pink-500 border-2 border-pink-200 transition-all flex-1 text-center"><i
+                    class="fa-solid fa-house-chimney mb-1 block text-lg transition-transform hover:scale-110"></i>Granja</button>
+            <button onclick="changeMainTab('shop')" id="main-tab-shop"
+                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
+                    class="fa-solid fa-store mb-1 block text-lg transition-transform hover:scale-110"></i>Tienda</button>
+            <button onclick="changeMainTab('upgrades')" id="main-tab-upgrades"
+                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center"><i
+                    class="fa-solid fa-star mb-1 block text-lg transition-transform hover:scale-110 text-orange-400"></i>Mejoras</button>
+            <button onclick="changeMainTab('catalog')" id="main-tab-catalog"
+                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center hidden sm:block"><i
+                    class="fa-solid fa-book-open mb-1 block text-lg transition-transform hover:scale-110"></i>Catálogo</button>
+            <button onclick="changeMainTab('trade')" id="main-tab-trade"
+                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all relative flex-1 text-center"><i
+                    class="fa-solid fa-handshake mb-1 block text-lg transition-transform hover:scale-110"></i>Trades</button>
+            <button onclick="window.location.href='https://icehost.netlify.app/logise1/farmgames.html';"
+                class="bg-white/60 p-2 rounded-2xl font-bold shadow-[0_4px_10px_rgba(0,0,0,0.03)] text-gray-500 border-2 border-transparent hover:bg-white transition-all flex-1 text-center bg-gradient-to-t hover:from-purple-50 hover:to-white"><i
+                    class="fa-solid fa-gamepad mb-1 block text-lg text-purple-400 transition-transform hover:scale-110"></i>Juegos</button>
+        </nav>
+
+        <main class="flex-1 overflow-y-auto no-scrollbar p-3 relative pb-10">
+
+            <div id="section-farm" class="flex flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/80 p-4 rounded-3xl shadow-sm border border-pink-100 mx-auto w-full relative">
+                    <div id="farm-grid" class="grid grid-cols-4 gap-2 aspect-square"></div>
+                </div>
+                <div class="bg-white/80 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <h2 class="text-md font-bold text-purple-400 mb-2"><i class="fa-solid fa-backpack mr-2"></i>Mochila
+                    </h2>
+                    <div id="inventory-list" class="flex gap-3 overflow-x-auto no-scrollbar pb-2"></div>
+                </div>
+            </div>
+
+            <div id="section-shop" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <div class="flex gap-1 mb-4 border-b pb-2 overflow-x-auto no-scrollbar">
+                        <button id="subtab-buy" onclick="switchShopTab('buy')"
+                            class="tab-active pb-1 text-xs whitespace-nowrap flex flex-col items-center justify-center transition flex-1"><i
+                                class="fa-solid fa-seedling mb-1 text-base"></i>Semillas</button>
+                        <button id="subtab-tools" onclick="switchShopTab('tools')"
+                            class="tab-inactive pb-1 text-xs whitespace-nowrap flex flex-col items-center justify-center transition flex-1 opacity-70 hover:opacity-100"><i
+                                class="fa-solid fa-hammer mb-1 text-base"></i>Herr.</button>
+                        <button id="subtab-sell" onclick="switchShopTab('sell')"
+                            class="tab-inactive pb-1 text-xs whitespace-nowrap flex flex-col items-center justify-center transition flex-1 opacity-70 hover:opacity-100"><i
+                                class="fa-solid fa-coins mb-1 text-base"></i>Vender</button>
+                        <button id="subtab-long" onclick="switchShopTab('long')"
+                            class="tab-inactive pb-1 text-xs whitespace-nowrap flex flex-col items-center justify-center transition flex-1 opacity-70 hover:opacity-100"><i
+                                class="fa-solid fa-gem mb-1 text-base"></i>Especiales</button>
+                    </div>
+                    <div id="shop-buy-container">
+                        <div class="flex justify-between items-center bg-gray-100 p-2 rounded-xl mb-3">
+                            <span class="text-xs font-bold text-gray-500"><i
+                                    class="fa-solid fa-rotate mr-1"></i>Rotación</span>
+                            <span class="text-xs font-black text-pink-500 bg-pink-100 px-2 py-1 rounded-md"
+                                id="shop-timer">00:00</span>
+                        </div>
+                        <div id="shop-list" class="flex flex-col gap-2"></div>
+                    </div>
+                    <div id="shop-tools-container" class="hidden">
+                        <div
+                            class="flex justify-between items-center bg-blue-50 p-2 rounded-xl mb-3 border border-blue-100">
+                            <span class="text-xs font-bold text-blue-600"><i class="fa-solid fa-clock mr-1"></i>Cada
+                                Hora</span>
+                            <span class="text-xs font-black text-blue-600 bg-blue-200 px-2 py-1 rounded-md"
+                                id="shop-tools-timer">00:00:00</span>
+                        </div>
+                        <div id="tools-list" class="flex flex-col gap-2"></div>
+                    </div>
+                    <div id="shop-sell-container" class="hidden">
+                        <p class="text-xs text-gray-500 font-bold mb-3 text-center">Vende tus cosechas aquí.</p>
+                        <div id="sell-list" class="grid grid-cols-2 gap-2"></div>
+                    </div>
+                    <div id="shop-long-container" class="hidden">
+                        <div
+                            class="flex justify-between items-center bg-purple-50 p-2 rounded-xl mb-3 border border-purple-100">
+                            <span class="text-xs font-bold text-purple-600"><i class="fa-solid fa-clock mr-1"></i>30m a
+                                24h</span>
+                            <span class="text-xs font-black text-purple-600 bg-purple-200 px-2 py-1 rounded-md"
+                                id="shop-long-timer">00:00:00</span>
+                        </div>
+                        <div id="long-list" class="flex flex-col gap-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN MEJORAS PROGRESIVAS -->
+            <div id="section-upgrades" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div
+                    class="bg-white/90 p-4 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-4 border-orange-100 w-full">
+                    <h2 class="text-xl font-black text-orange-500 mb-1"><i class="fa-solid fa-star mr-2"></i>Mejoras de
+                        Granja</h2>
+                    <p class="text-xs font-bold text-gray-500 mb-4">Mejora tus habilidades permanentemente.</p>
+                    <div id="upgrades-list" class="flex flex-col gap-3"></div>
+                </div>
+            </div>
+
+            <!-- CATÁLOGO -->
+            <div id="section-catalog" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <h2 class="text-lg font-black text-indigo-500 mb-1"><i
+                            class="fa-solid fa-book-open mr-2"></i>Catálogo de Cultivos</h2>
+                    <p class="text-xs font-bold text-gray-500 mb-4">Sube de nivel para descubrir nuevas especies. Total:
+                        <span class="text-indigo-500" id="catalog-count">1/60</span>
+                    </p>
+                    <div id="catalog-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        <!-- Generado por JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-trade" class="hidden flex-col gap-4 max-w-md mx-auto">
+                <div class="bg-white/90 p-4 rounded-3xl shadow-sm border border-pink-100 w-full">
+                    <h2 class="text-md font-bold text-blue-500 mb-3"><i class="fa-solid fa-paper-plane mr-2"></i>Enviar
+                        Solicitud</h2>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="trade-friend-name" placeholder="Nombre de usuario..."
+                            class="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-blue-300">
+                        <button onclick="sendTradeRequest()"
+                            class="bg-blue-500 text-white font-bold px-4 py-2 rounded-xl hover:bg-blue-600 shadow-sm"><i
+                                class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                    <h2 class="text-md font-bold text-purple-500 mb-3 border-t pt-4"><i
+                            class="fa-solid fa-inbox mr-2"></i>Recibidas</h2>
+                    <div id="trade-requests-in" class="flex flex-col gap-2"></div>
+                    <h2 class="text-md font-bold text-gray-500 mb-3 border-t pt-4 mt-2"><i
+                            class="fa-solid fa-clock-rotate-left mr-2"></i>Enviadas</h2>
+                    <div id="trade-requests-out" class="flex flex-col gap-2"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Nivel Superado -->
+    <div id="unlock-modal"
+        class="fixed inset-0 bg-yellow-400/90 backdrop-blur-sm z-[200] hidden flex-col justify-center items-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden"
+            style="animation: popOut 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div
+                class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none">
+            </div>
+            <h2 class="text-4xl font-black text-yellow-500 mb-2 drop-shadow-sm">¡Nivel <span
+                    id="unlock-lvl-text">X</span>!</h2>
+            <p class="text-gray-600 font-bold mb-6 text-sm">Has alcanzado un nuevo nivel de granjero.</p>
+
+            <div id="unlock-items-area" class="bg-yellow-50 rounded-2xl p-4 border-2 border-yellow-200 mb-6 relative">
+                <span
+                    class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-white font-black text-[10px] px-3 py-0.5 rounded-full uppercase tracking-wider">Desbloqueo</span>
+                <div id="unlock-icon" class="text-6xl mb-2 drop-shadow-md">🎉</div>
+                <h3 id="unlock-name" class="text-xl font-black text-gray-800">¡Nueva Fruta!</h3>
+            </div>
+
+            <button onclick="closeUnlockModal()"
+                class="w-full bg-yellow-500 text-white font-black text-lg py-3 rounded-xl shadow-lg hover:bg-yellow-600 transition-colors relative z-10">¡Genial!</button>
+        </div>
+    </div>
+
+    <div id="plant-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 hidden flex-col justify-end sm:justify-center items-center pb-0 sm:pb-0">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter relative">
+            <button onclick="closeModal('plant-modal')"
+                class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full text-gray-500"><i
+                    class="fa-solid fa-times"></i></button>
+            <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">Plantar Semilla</h3>
+            <div id="modal-seeds-list" class="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto no-scrollbar"></div>
+        </div>
+    </div>
+
+    <div id="tool-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 hidden flex-col justify-end sm:justify-center items-center pb-0 sm:pb-0">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter relative">
+            <button onclick="closeModal('tool-modal')"
+                class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full text-gray-500"><i
+                    class="fa-solid fa-times"></i></button>
+            <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">Usar Herramienta</h3>
+            <div id="modal-tools-list" class="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto no-scrollbar"></div>
+        </div>
+    </div>
+
+    <div id="live-trade-modal"
+        class="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-[100] hidden flex-col justify-center items-center p-2">
+    </div>
+    <div id="notification-container"
+        class="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[300] flex flex-col gap-2 pointer-events-none w-[90%] max-w-sm">
+    </div>
+
+    <script type="module" src="farm_script.js"></script>
+</body>
+
+</html>

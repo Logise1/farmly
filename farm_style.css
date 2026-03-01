@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #fdf2f8;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.plot-dirt {
+    background-color: #fcd34d;
+    background-image: radial-gradient(#fbbf24 15%, transparent 16%), radial-gradient(#fbbf24 15%, transparent 16%);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.plot-ready {
+    animation: bounce 1s infinite;
+    border: 4px solid #86efac !important;
+    background-color: #bbf7d0;
+}
+
+/* Rarezas */
+.rarity-comun {
+    color: #4b5563;
+    border-color: #d1d5db;
+    background: #e5e7eb;
+}
+
+.rarity-raro {
+    color: #2563eb;
+    border-color: #93c5fd;
+    background: #dbeafe;
+}
+
+.rarity-epico {
+    color: #9333ea;
+    border-color: #d8b4fe;
+    background: #f3e8ff;
+}
+
+.rarity-mitico {
+    color: #dc2626;
+    border-color: #fca5a5;
+    background: #fee2e2;
+}
+
+.rarity-legendario {
+    color: #ca8a04;
+    border-color: #fde047;
+    background: #fef08a;
+    text-shadow: 0 0 5px rgba(202, 138, 4, 0.5);
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+}
+
+.rarity-colosal {
+    color: #0d9488;
+    border-color: #5eead4;
+    background: #ccfbf1;
+    box-shadow: 0 0 10px rgba(13, 148, 136, 0.4);
+}
+
+.rarity-titanico {
+    color: #be185d;
+    border-color: #f9a8d4;
+    background: #fce7f3;
+    box-shadow: 0 0 12px rgba(190, 24, 93, 0.4);
+}
+
+.rarity-ancestral {
+    color: #0f172a;
+    border-color: #94a3b8;
+    background: #e2e8f0;
+    box-shadow: 0 0 15px rgba(15, 23, 42, 0.5);
+}
+
+.rarity-divino {
+    color: #ffffff;
+    border-color: #38bdf8;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.7);
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+.modal-enter {
+    animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes popOut {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    80% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.tab-active {
+    border-bottom: 4px solid #f472b6;
+    color: #db2777;
+    font-weight: bold;
+}
+
+.tab-inactive {
+    color: #9ca3af;
+    border-bottom: 4px solid transparent;
+}
+
+.item-locked {
+    filter: grayscale(100%) brightness(50%);
+    opacity: 0.5;
+}
+
+@keyframes shimmerHard {
+    0% {
+        transform: translateX(-500%) skewX(-30deg);
+    }
+
+    100% {
+        transform: translateX(1200%) skewX(-30deg);
+    }
+}
+
+.shimmer-epic-plus::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 15%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.75);
+    transform: skewX(-30deg);
+    animation: shimmerHard 1s infinite linear;
+    z-index: 5;
+    pointer-events: none;
+}
