@@ -19,7 +19,7 @@
         .item-card { transition: transform 0.2s, box-shadow 0.2s; }
         .item-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
         
-        .cooldown-active .buy-btn {
+        .cooldown-active .action-btn {
             background-color: #e5e7eb !important;
             color: #9ca3af !important;
             cursor: not-allowed;
@@ -37,6 +37,18 @@
         .rarity-titanico { color: #be185d; border-color: #f9a8d4; background: #fce7f3; box-shadow: 0 0 12px rgba(190, 24, 93, 0.4); }
         .rarity-ancestral { color: #0f172a; border-color: #94a3b8; background: #e2e8f0; box-shadow: 0 0 15px rgba(15, 23, 42, 0.5); }
         .rarity-divino { color: #ffffff; border-color: #38bdf8; background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6); box-shadow: 0 0 20px rgba(167, 139, 250, 0.7); }
+
+        .chat-bubble-seller {
+            background-color: #f3f4f6;
+            color: #374151;
+            border-bottom-left-radius: 0;
+        }
+        .chat-bubble-me {
+            background-color: #ec4899;
+            color: white;
+            border-bottom-right-radius: 0;
+            align-self: flex-end;
+        }
     </style>
 </head>
 <body class="text-gray-800 h-screen flex flex-col overflow-hidden relative">
@@ -57,7 +69,7 @@
     <!-- APP SCREEN -->
     <div id="app-screen" class="hidden flex-col h-full w-full">
         <!-- HEADER -->
-        <header class="bg-white/90 backdrop-blur-md shadow-sm p-4 z-50 flex flex-col gap-3 shrink-0 border-b-4 border-pink-200 relative">
+        <header class="bg-white/90 backdrop-blur-md shadow-sm p-4 z-40 flex flex-col gap-3 shrink-0 border-b-4 border-pink-200 relative">
             <div class="flex justify-between items-center max-w-4xl mx-auto w-full">
                 <div class="flex items-center gap-2">
                     <button onclick="window.location.href='./index.html'" class="bg-gray-100 text-gray-600 w-10 h-10 rounded-full flex justify-center items-center hover:bg-gray-200 shadow-sm mr-2"><i class="fa-solid fa-arrow-left"></i></button>
@@ -71,6 +83,12 @@
                 </div>
             </div>
             
+            <!-- BARRA DE BÚSQUEDA -->
+            <div class="max-w-4xl mx-auto w-full flex gap-2">
+                <input type="text" id="search-input" placeholder="Buscar semillas, herramientas, animales..." class="flex-1 bg-white border-2 border-pink-100 rounded-xl px-4 py-2 font-bold text-gray-700 outline-none focus:border-pink-400 shadow-inner text-sm">
+                <button onclick="executeSearch()" class="bg-pink-400 text-white font-black px-4 py-2 rounded-xl shadow-sm hover:bg-pink-500 transition-colors"><i class="fa-solid fa-search"></i></button>
+            </div>
+
             <!-- BARRA DE COOLDOWN -->
             <div id="cooldown-banner" class="max-w-4xl mx-auto w-full bg-gray-100 border-2 border-gray-300 text-gray-500 px-4 py-2 rounded-xl flex items-center justify-between shadow-sm transition-colors duration-300">
                 <span class="font-bold text-sm" id="cooldown-text"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Cargando estado...</span>
@@ -81,25 +99,67 @@
         <!-- LISTA INTERMINABLE (Scrollable) -->
         <main id="scroll-container" class="flex-1 overflow-y-auto no-scrollbar p-4 relative">
             <div class="max-w-4xl mx-auto">
-                <p class="text-center text-gray-500 font-bold mb-6 text-sm bg-white/60 p-2 rounded-xl border border-pink-100 shadow-sm">
-                    ⚠️ Regla del mercado: Solo puedes llevarte 1 artículo cada 10 minutos. ¡Elige sabiamente!
+                <p class="text-center text-gray-500 font-bold mb-6 text-xs bg-white/60 p-2 rounded-xl border border-pink-100 shadow-sm">
+                    ⚠️ Solo Semillas, Animales y Herramientas. 1 compra cada 10 min. ¡Negocia los precios!
                 </p>
                 
                 <div id="items-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pb-10">
                     <!-- Los items se generan aquí con JS -->
                 </div>
                 
-                <!-- Indicador de carga para el infinite scroll -->
-                <div id="loading-indicator" class="py-8 text-center text-pink-400 text-xl font-bold animate-pulse">
-                    <i class="fa-solid fa-box-open mr-2"></i> Sacando más cajas del almacén...
+                <div id="loading-indicator" class="py-8 text-center text-pink-400 text-lg font-bold animate-pulse">
+                    <i class="fa-solid fa-box-open mr-2"></i> Sacando más mercancía...
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- CONTENEDOR DE NOTIFICACIONES -->
-    <div id="notification-container" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-[90%] max-w-sm">
+    <!-- MODAL VISTA / NEGOCIACIÓN -->
+    <div id="action-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex-col justify-end sm:justify-center items-center pb-0 sm:pb-0">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 relative flex flex-col shadow-2xl transition-all h-[80vh] sm:h-auto max-h-[80vh]">
+            <button onclick="closeActionModal()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 z-10"><i class="fa-solid fa-times"></i></button>
+            
+            <!-- VISTA DETALLE -->
+            <div id="view-mode" class="flex flex-col items-center flex-1">
+                <h3 class="text-xl font-black text-gray-800 mb-4 w-full text-center border-b pb-2">Detalles del Artículo</h3>
+                <div id="modal-item-condition" class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm mb-4"></div>
+                <div id="modal-item-icon" class="w-24 h-24 rounded-3xl flex items-center justify-center text-5xl mb-4 shadow-inner border-4 relative"></div>
+                <h2 id="modal-item-name" class="text-2xl font-black text-gray-800 text-center leading-tight mb-2"></h2>
+                <p id="modal-item-price" class="text-3xl font-black text-pink-500 mb-8 bg-pink-50 px-6 py-2 rounded-2xl border-2 border-pink-200"></p>
+                
+                <div class="mt-auto w-full flex flex-col gap-3">
+                    <button onclick="initNegotiation()" class="action-btn w-full bg-blue-500 hover:bg-blue-600 text-white font-black py-4 rounded-2xl shadow-[0_4px_0_#2563eb] active:translate-y-[4px] active:shadow-[0_0px_0_#2563eb] transition-all flex items-center justify-center gap-2 text-lg">
+                        <i class="fa-solid fa-comments"></i> Negociar Precio
+                    </button>
+                    <button id="modal-buy-btn" class="action-btn w-full bg-pink-500 hover:bg-pink-600 text-white font-black py-4 rounded-2xl shadow-[0_4px_0_#db2777] active:translate-y-[4px] active:shadow-[0_0px_0_#db2777] transition-all flex items-center justify-center gap-2 text-lg">
+                        <i class="fa-solid fa-cart-shopping"></i> Comprar Directo
+                    </button>
+                </div>
+            </div>
+
+            <!-- VISTA CHAT DE NEGOCIACIÓN -->
+            <div id="chat-mode" class="hidden flex-col h-full flex-1">
+                <h3 class="text-xl font-black text-blue-500 mb-2 w-full text-center border-b pb-2"><i class="fa-solid fa-handshake mr-2"></i>Negociación</h3>
+                
+                <div id="chat-history" class="flex-1 overflow-y-auto bg-gray-50 rounded-2xl p-4 flex flex-col gap-3 mb-4 border-2 border-gray-100 shadow-inner">
+                    <!-- Mensajes aquí -->
+                </div>
+                
+                <div id="chat-action-area" class="w-full">
+                    <button id="chat-buy-btn" class="hidden action-btn w-full bg-green-500 hover:bg-green-600 text-white font-black py-3 rounded-xl shadow-md mb-3 transition-all">
+                        Comprar por X 🪙
+                    </button>
+                    <div class="flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Ej: Te doy 150..." class="flex-1 bg-white border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 outline-none focus:border-blue-400">
+                        <button onclick="sendChatMessage()" class="bg-blue-500 text-white w-12 rounded-xl shadow-sm hover:bg-blue-600 flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- CONTENEDOR DE NOTIFICACIONES -->
+    <div id="notification-container" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-[90%] max-w-sm"></div>
 
     <!-- SCRIPT TIPO MODULE PARA FIREBASE -->
     <script type="module">
@@ -107,7 +167,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- SISTEMA DE SONIDOS ZzFX ---
+        // --- SISTEMA DE SONIDOS ---
         let zzfxX = new (window.AudioContext || window.webkitAudioContext)();
         let zzfx = (...t) => {
             if (zzfxX.state === 'suspended') zzfxX.resume();
@@ -121,7 +181,8 @@
         const sfx = {
             click: [1, , 300, .01, .01, .01, 1, 1.1, , , , , , .1],
             buy: [1.5, , 800, .01, .05, .15, 1, 1.8, , , , -100, .1, , .1],
-            error: [1.5, , 150, .04, .1, .2, 3, 2, , , , , , .1, , .5]
+            error: [1.5, , 150, .04, .1, .2, 3, 2, , , , , , .1, , .5],
+            message: [1.2, , 500, .01, .02, .05, 1, 1.5, , , , , , .1]
         };
         window.playSound = function(type) { if (sfx[type]) zzfx(...sfx[type]); }
 
@@ -136,34 +197,30 @@
         const db = getFirestore(app);
         const APP_ID = "super-granja-multi";
 
-        // --- ESTADO GLOBAL Y REFERENCIAS ---
+        // --- ESTADO GLOBAL ---
         let currentUser = null;
         let username = "Player";
         let saveDocRef = null;
-        let state = { coins: 0, inventory: {}, tools: {}, lastMercadilloBuy: 0 };
-        const COOLDOWN_MS = 10 * 60 * 1000; // 10 Minutos
+        let state = { coins: 0, inventory: {}, tools: {}, animals: [], lastMercadilloBuy: 0 };
+        const COOLDOWN_MS = 10 * 60 * 1000;
         let timerInterval = null;
+        let currentSearchTerm = "";
 
-        // --- DATOS DEL JUEGO ORIGINAL ---
+        // --- ESTADO NEGOCIACIÓN ---
+        let negState = null;
+
+        // --- DATOS DEL JUEGO ORIGINAL (MODIFICADO) ---
         const cropDefs = [
             { n: "Trigo", i: "🌾" }, { n: "Zanahoria", i: "🥕" }, { n: "Tomate", i: "🍅" }, { n: "Cebolla", i: "🧅" }, { n: "Patata", i: "🥔" },
             { n: "Girasol", i: "🌻" }, { n: "Fresa", i: "🍓" }, { n: "Sandía", i: "🍉" }, { n: "Manzana", i: "🍎" }, { n: "Pera", i: "🍐" },
-            { n: "Naranja", i: "🍊" }, { n: "Limón", i: "🍋" }, { n: "Plátano", i: "🍌" }, { n: "Uva", i: "🍇" }, { n: "Cereza", i: "🍒" },
-            { n: "Melocotón", i: "🍑" }, { n: "Piña", i: "🍍" }, { n: "Kiwi", i: "🥝" }, { n: "Melón", i: "🍈" }, { n: "Coco", i: "🥥" },
-            { n: "Aguacate", i: "🥑" }, { n: "Berenjena", i: "🍆" }, { n: "Pimiento", i: "🫑" }, { n: "Pepino", i: "🥒" }, { n: "Lechuga", i: "🥬" },
-            { n: "Brócoli", i: "🥦" }, { n: "Ajo", i: "🧄" }, { n: "Maíz", i: "🌽" }, { n: "Calabaza", i: "🎃" }, { n: "Champiñón", i: "🍄" },
-            { n: "Cacahuete", i: "🥜" }, { n: "Castaña", i: "🌰" }, { n: "Mango", i: "🥭" }, { n: "Arándano", i: "🫐" }, { n: "Aceituna", i: "🫒" }
+            { n: "Naranja", i: "🍊" }, { n: "Limón", i: "🍋" }, { n: "Plátano", i: "🍌" }
         ];
 
         const BASE_CROPS = {};
-        const CROP_KEYS_ORDER = [];
         cropDefs.forEach((c, idx) => {
             const key = c.n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const scale = Math.pow(1.12, idx);
-            BASE_CROPS[key] = {
-                name: c.n, icon: c.i, baseCost: Math.max(5, Math.floor(10 * scale))
-            };
-            CROP_KEYS_ORDER.push(key);
+            BASE_CROPS[key] = { name: c.n, icon: c.i, baseCost: Math.max(5, Math.floor(10 * scale)) };
         });
 
         const RARITIES = {
@@ -171,9 +228,7 @@
             raro: { name: 'Raro', mult: 2, weight: 25 },
             epico: { name: 'Épico', mult: 5, weight: 10 },
             mitico: { name: 'Mítico', mult: 10, weight: 4 },
-            legendario: { name: 'Legendario', mult: 25, weight: 1 },
-            colosal: { name: 'Colosal', mult: 180, weight: 0.5 },
-            titanico: { name: 'Titánico', mult: 360, weight: 0.2 }
+            legendario: { name: 'Legendario', mult: 25, weight: 1 }
         };
 
         const BASE_TOOLS = {
@@ -184,13 +239,25 @@
             polvo: { name: 'Polvo Hada', icon: '✨', cost: 25000, css: 'bg-pink-100 text-pink-600 border-pink-200' }
         };
 
+        // NUEVO: Animales y Comida
+        const BASE_ANIMALS = {
+            chicken: { name: 'Gallina', icon: '🐔', cost: 1000, css: 'bg-orange-100 text-orange-600 border-orange-200' },
+            cow: { name: 'Vaca', icon: '🐮', cost: 5000, css: 'bg-gray-100 text-gray-800 border-gray-300' },
+            pig: { name: 'Cerdo', icon: '🐷', cost: 15000, css: 'bg-pink-100 text-pink-700 border-pink-300' }
+        };
+
+        const BASE_FOOD = {
+            crop_maiz: { name: 'Saco de Maíz (Comida)', icon: '🌽', cost: 60, css: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+            crop_trigo: { name: 'Heno de Trigo (Comida)', icon: '🌾', cost: 120, css: 'bg-amber-100 text-amber-700 border-amber-300' },
+            crop_zanahoria: { name: 'Zanahorias Premium (Comida)', icon: '🥕', cost: 250, css: 'bg-orange-100 text-orange-600 border-orange-300' }
+        };
+
         const conditions = [
-            { desc: "Casi Nuevo", mult: 1.2, color: "text-green-600 bg-green-100" },
-            { desc: "Ligeramente Usado", mult: 1.0, color: "text-blue-600 bg-blue-100" },
-            { desc: "De Oferta", mult: 0.8, color: "text-orange-600 bg-orange-100" },
-            { desc: "Encontrado en un granero", mult: 0.7, color: "text-purple-600 bg-purple-100" },
-            { desc: "Vintage / Clásico", mult: 1.5, color: "text-pink-600 bg-pink-100" },
-            { desc: "Envase a medias", mult: 0.6, color: "text-gray-600 bg-gray-200" }
+            { desc: "Casi Nuevo", mult: 1.2, color: "text-green-600 bg-green-100 border-green-300" },
+            { desc: "Ligeramente Usado", mult: 1.0, color: "text-blue-600 bg-blue-100 border-blue-300" },
+            { desc: "En Oferta", mult: 0.8, color: "text-orange-600 bg-orange-100 border-orange-300" },
+            { desc: "Antiguo", mult: 0.7, color: "text-purple-600 bg-purple-100 border-purple-300" },
+            { desc: "Especial", mult: 1.5, color: "text-pink-600 bg-pink-100 border-pink-300" }
         ];
 
         // --- FUNCIONES DE AUTH ---
@@ -229,8 +296,7 @@
                 saveDocRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'saveData', 'v3');
                 await loadState();
                 
-                document.getElementById('items-grid').innerHTML = ''; // Limpiar grilla
-                appendItems(16); // Llenar la primera vista
+                executeSearch(); // Carga inicial
                 
                 if(timerInterval) clearInterval(timerInterval);
                 timerInterval = setInterval(updateTimerUI, 1000);
@@ -251,6 +317,7 @@
                 state.coins = d.coins ?? 0; 
                 state.inventory = d.inventory ?? {}; 
                 state.tools = d.tools ?? {}; 
+                state.animals = d.animals ?? [];
                 state.lastMercadilloBuy = d.lastMercadilloBuy ?? 0;
             }
             document.getElementById('coins-display').innerText = state.coins;
@@ -258,113 +325,245 @@
 
         function saveState() {
             if (saveDocRef) {
-                // Hacemos merge para no sobreescribir xp, nivel o animales
                 setDoc(saveDocRef, { 
                     coins: state.coins, 
                     inventory: state.inventory, 
                     tools: state.tools,
+                    animals: state.animals,
                     lastMercadilloBuy: state.lastMercadilloBuy
                 }, { merge: true }).catch(console.error);
             }
         }
 
-        // --- GENERADOR DE OBJETOS ALEATORIOS (BASE DEL JUEGO) ---
-        function generateRandomItem() {
-            const rand = Math.random();
-            let finalId, finalName, icon, type, basePrice, cssClass;
+        // --- BÚSQUEDA Y GENERACIÓN ---
+        window.executeSearch = function() {
+            window.playSound('click');
+            currentSearchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            document.getElementById('items-grid').innerHTML = ''; // Limpiar grilla
+            appendItems(16);
+        }
 
-            if (rand < 0.75) {
-                // Generar Cultivo o Semilla (75% prob)
-                const isSeed = Math.random() < 0.6; // 60% prob semilla, 40% cosecha
-                const baseKey = CROP_KEYS_ORDER[Math.floor(Math.random() * CROP_KEYS_ORDER.length)];
-                const baseData = BASE_CROPS[baseKey];
-                
-                // Sortear rareza
-                let sum = 0; for (let r in RARITIES) sum += RARITIES[r].weight;
-                let rarRand = Math.random() * sum; 
-                let rarityId = 'comun';
-                for (let r in RARITIES) { if (rarRand < RARITIES[r].weight) { rarityId = r; break; } rarRand -= RARITIES[r].weight; }
-                
-                const rarity = RARITIES[rarityId];
+        function generateRandomItem(searchTerm = "") {
+            // Recopilamos todas las posibilidades
+            let allOptions = [];
 
-                finalId = (isSeed ? 'seed_' : 'crop_') + baseKey + '_' + rarityId;
-                finalName = (isSeed ? 'Sem. ' : 'Cos. ') + baseData.name;
-                icon = baseData.icon;
-                type = isSeed ? 'seed' : 'crop';
-                basePrice = baseData.baseCost * rarity.mult;
-                cssClass = `rarity-${rarityId} border-2`;
-            } else {
-                // Generar Herramienta (25% prob)
-                const toolKeys = Object.keys(BASE_TOOLS);
-                const toolKey = toolKeys[Math.floor(Math.random() * toolKeys.length)];
-                const toolData = BASE_TOOLS[toolKey];
-                
-                finalId = toolKey;
-                finalName = toolData.name;
-                icon = toolData.icon;
-                type = 'tool';
-                basePrice = toolData.cost;
-                cssClass = `${toolData.css} border-2`;
+            // Semillas
+            Object.keys(BASE_CROPS).forEach(k => {
+                let rars = Object.keys(RARITIES);
+                let rar = rars[Math.floor(Math.random() * rars.length)];
+                allOptions.push({
+                    id: `seed_${k}_${rar}`, name: `Sem. ${BASE_CROPS[k].name}`, icon: BASE_CROPS[k].icon, type: 'seed',
+                    basePrice: BASE_CROPS[k].baseCost * RARITIES[rar].mult, cssClass: `rarity-${rar} border-2`
+                });
+            });
+
+            // Herramientas
+            Object.keys(BASE_TOOLS).forEach(k => {
+                allOptions.push({
+                    id: k, name: BASE_TOOLS[k].name, icon: BASE_TOOLS[k].icon, type: 'tool',
+                    basePrice: BASE_TOOLS[k].cost, cssClass: `${BASE_TOOLS[k].css} border-2`
+                });
+            });
+
+            // Animales
+            Object.keys(BASE_ANIMALS).forEach(k => {
+                allOptions.push({
+                    id: k, name: BASE_ANIMALS[k].name, icon: BASE_ANIMALS[k].icon, type: 'animal',
+                    basePrice: BASE_ANIMALS[k].cost, cssClass: `${BASE_ANIMALS[k].css} border-2`
+                });
+            });
+
+            // Comida
+            Object.keys(BASE_FOOD).forEach(k => {
+                allOptions.push({
+                    id: k, name: BASE_FOOD[k].name, icon: BASE_FOOD[k].icon, type: 'food',
+                    basePrice: BASE_FOOD[k].cost, cssClass: `${BASE_FOOD[k].css} border-2`
+                });
+            });
+
+            // Filtrar por búsqueda si hay
+            if (searchTerm) {
+                allOptions = allOptions.filter(o => o.name.toLowerCase().includes(searchTerm));
             }
 
-            // Aplicar condición del mercadillo (modifica el precio)
+            // Si no hay resultados, generar un objeto de "basura" o ignorar. Mostramos algo genérico.
+            if(allOptions.length === 0) {
+                return { id: 'basura', name: 'Caja Vacía', icon: '📦', type: 'junk', amount: 1, conditionDesc: 'Decepcionante', conditionColor: 'bg-gray-200 text-gray-500', price: 1, cssClass: 'bg-gray-100 border-gray-300 border-2' };
+            }
+
+            const picked = allOptions[Math.floor(Math.random() * allOptions.length)];
             const cond = conditions[Math.floor(Math.random() * conditions.length)];
             
-            // "Precios razonables pero un poco más caros": 25% de markup base sobre el precio original
-            let finalPrice = Math.floor(basePrice * cond.mult * 1.25);
-            // Asegurar un mínimo de precio
-            if(finalPrice < 5) finalPrice = 5;
+            // Markup de segunda mano (+25%) + condición
+            let rawPrice = Math.floor(picked.basePrice * cond.mult * 1.25);
+            if(rawPrice < 5) rawPrice = 5;
 
-            // Pack size logic (sometimes they come in packs)
+            // Animales siempre se compran de a 1. Semillas/Comida pueden ir en packs.
             let amount = 1;
-            if(type === 'seed' && Math.random() > 0.5) amount = Math.floor(Math.random() * 4) + 2;
-            else if (type === 'crop' && Math.random() > 0.4) amount = Math.floor(Math.random() * 9) + 2;
-            
-            finalPrice = finalPrice * amount;
+            if((picked.type === 'seed' || picked.type === 'food') && Math.random() > 0.4) {
+                amount = Math.floor(Math.random() * 5) + 2;
+            }
+            let finalPrice = rawPrice * amount;
 
             return {
-                id: finalId,
-                name: finalName,
-                icon: icon,
-                type: type,
+                id: picked.id,
+                name: picked.name,
+                icon: picked.icon,
+                type: picked.type,
                 amount: amount,
                 conditionDesc: cond.desc,
                 conditionColor: cond.color,
                 price: finalPrice,
-                cssClass: cssClass
+                cssClass: picked.cssClass
             };
         }
 
-        // --- RENDERIZADO ---
         function appendItems(count = 12) {
             const grid = document.getElementById('items-grid');
             for (let i = 0; i < count; i++) {
-                const item = generateRandomItem();
+                const item = generateRandomItem(currentSearchTerm);
+                if(item.type === 'junk' && currentSearchTerm !== "") continue; // Skip if junk and searching
+
                 const el = document.createElement('div');
                 el.className = "item-card bg-white p-3 rounded-3xl border-2 border-pink-100 flex flex-col items-center text-center shadow-sm relative";
                 
+                const itemDataStr = encodeURIComponent(JSON.stringify(item));
+
                 el.innerHTML = `
                     <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-max text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${item.conditionColor} shadow-sm border border-white z-10">
                         ${item.conditionDesc}
                     </div>
                     <div class="w-16 h-16 ${item.cssClass} rounded-2xl flex flex-col items-center justify-center text-3xl mb-2 mt-3 shadow-inner relative">
                         ${item.icon}
-                        ${item.amount > 1 ? `<span class="absolute -bottom-2 -right-2 bg-gray-800 text-white text-[10px] font-black px-1.5 rounded-full shadow-sm">x${item.amount}</span>` : ''}
+                        ${item.amount > 1 ? `<span class="absolute -bottom-2 -right-2 bg-gray-800 text-white text-[10px] font-black px-1.5 rounded-full shadow-sm border border-white">x${item.amount}</span>` : ''}
                     </div>
-                    <h3 class="font-black text-gray-800 text-xs leading-tight mb-1 h-8 flex items-center justify-center">${item.name}</h3>
-                    <div class="w-full bg-pink-50 rounded-xl p-1.5 mb-2 border border-pink-100">
-                        <span class="text-sm font-black text-pink-500">${item.price} 🪙</span>
-                    </div>
-                    <button onclick="window.buyItem(this, '${item.id}', '${item.name}', ${item.price}, ${item.amount}, '${item.type}')" class="buy-btn w-full bg-pink-400 hover:bg-pink-500 text-white font-black py-2 rounded-xl text-xs shadow-[0_4px_0_#db2777] active:shadow-[0_0px_0_#db2777] active:translate-y-[4px] transition-all flex items-center justify-center gap-1">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar
+                    <h3 class="font-black text-gray-800 text-xs leading-tight mb-2 h-8 flex items-center justify-center">${item.name}</h3>
+                    <button onclick="window.openActionModal('${itemDataStr}')" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-black py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 border border-blue-200">
+                        <i class="fa-solid fa-eye"></i> Ver Objeto
                     </button>
                 `;
                 grid.appendChild(el);
             }
         }
 
-        // --- LÓGICA DE COMPRA ---
-        window.buyItem = function(btnElement, itemId, itemName, price, amount, type) {
+        // --- LÓGICA DE MODALES Y NEGOCIACIÓN ---
+        window.openActionModal = function(itemDataStr) {
+            window.playSound('click');
+            const item = JSON.parse(decodeURIComponent(itemDataStr));
+            negState = {
+                itemId: item.id,
+                itemName: item.name,
+                icon: item.icon,
+                amount: item.amount,
+                type: item.type,
+                originalPrice: item.price,
+                sellerPrice: item.price,
+                minAcceptable: Math.floor(item.price * 0.75) // El vendedor acepta hasta un 25% de rebaja
+            };
+
+            // Preparar UI
+            document.getElementById('view-mode').classList.remove('hidden');
+            document.getElementById('chat-mode').classList.add('hidden');
+            document.getElementById('view-mode').classList.add('flex');
+            document.getElementById('chat-mode').classList.remove('flex');
+
+            document.getElementById('modal-item-condition').className = `text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm mb-4 border border-white ${item.conditionColor}`;
+            document.getElementById('modal-item-condition').innerText = item.conditionDesc;
+            
+            document.getElementById('modal-item-icon').className = `w-24 h-24 rounded-3xl flex items-center justify-center text-5xl mb-4 shadow-inner relative ${item.cssClass}`;
+            document.getElementById('modal-item-icon').innerHTML = `${item.icon} ${item.amount > 1 ? `<span class="absolute -bottom-3 -right-3 bg-gray-800 text-white text-xs font-black px-2 py-0.5 rounded-full shadow-md border-2 border-white">x${item.amount}</span>` : ''}`;
+            
+            document.getElementById('modal-item-name').innerText = item.name;
+            document.getElementById('modal-item-price').innerText = `${item.price} 🪙`;
+
+            const buyBtn = document.getElementById('modal-buy-btn');
+            buyBtn.onclick = () => window.processBuy(negState.sellerPrice);
+
+            document.getElementById('action-modal').classList.remove('hidden');
+            document.getElementById('action-modal').classList.add('flex');
+        }
+
+        window.closeActionModal = function() {
+            window.playSound('click');
+            document.getElementById('action-modal').classList.add('hidden');
+            document.getElementById('action-modal').classList.remove('flex');
+            negState = null;
+        }
+
+        window.initNegotiation = function() {
+            window.playSound('click');
+            document.getElementById('view-mode').classList.add('hidden');
+            document.getElementById('view-mode').classList.remove('flex');
+            document.getElementById('chat-mode').classList.remove('hidden');
+            document.getElementById('chat-mode').classList.add('flex');
+
+            const chat = document.getElementById('chat-history');
+            chat.innerHTML = ''; // Clear chat
+            document.getElementById('chat-buy-btn').classList.add('hidden');
+
+            addMessageToChat('Vendedor', `¡Hola! Vendo ${negState.amount > 1 ? 'estas' : 'esta'} <b>${negState.itemName}</b> por <b>${negState.sellerPrice} 🪙</b>. ¿Qué ofreces?`, 'seller');
+        }
+
+        function addMessageToChat(sender, text, type) {
+            window.playSound('message');
+            const chat = document.getElementById('chat-history');
+            const cssClass = type === 'me' ? 'chat-bubble-me' : 'chat-bubble-seller';
+            const alignClass = type === 'me' ? 'self-end' : 'self-start';
+
+            const el = document.createElement('div');
+            el.className = `max-w-[85%] px-4 py-2 rounded-2xl text-sm font-bold shadow-sm ${cssClass} ${alignClass}`;
+            el.innerHTML = text;
+            chat.appendChild(el);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        window.sendChatMessage = function() {
+            const inputEl = document.getElementById('chat-input');
+            const text = inputEl.value.trim();
+            if(!text) return;
+            
+            addMessageToChat('Yo', text, 'me');
+            inputEl.value = '';
+
+            // Lógica del vendedor
+            const nums = text.match(/\d+/);
+            setTimeout(() => {
+                if (!nums) {
+                    addMessageToChat('Vendedor', `No te entiendo. Esto cuesta <b>${negState.sellerPrice} 🪙</b>, ni más ni menos.`, 'seller');
+                    showChatBuyBtn(negState.sellerPrice);
+                } else {
+                    const offer = parseInt(nums[0]);
+                    
+                    if (offer >= negState.sellerPrice) {
+                        negState.sellerPrice = offer; // Accepted overpay or full price
+                        addMessageToChat('Vendedor', `¡Me vale! Trato hecho por <b>${offer} 🪙</b>.`, 'seller');
+                        showChatBuyBtn(offer);
+                    } else if (offer >= negState.minAcceptable) {
+                        negState.sellerPrice = offer;
+                        addMessageToChat('Vendedor', `Uf, venga va. Me vale por <b>${offer} 🪙</b>.`, 'seller');
+                        showChatBuyBtn(offer);
+                    } else if (offer >= Math.floor(negState.originalPrice * 0.5)) {
+                        // Counter offer
+                        negState.sellerPrice = Math.floor((offer + negState.sellerPrice) / 2);
+                        addMessageToChat('Vendedor', `No puedo perderle tanto dinero... Lo dejamos a medias: <b>${negState.sellerPrice} 🪙</b>. ¿Te hace?`, 'seller');
+                        showChatBuyBtn(negState.sellerPrice);
+                    } else {
+                        addMessageToChat('Vendedor', `¿Me estás tomando el pelo? Por menos de <b>${negState.sellerPrice} 🪙</b> no lo suelto.`, 'seller');
+                        showChatBuyBtn(negState.sellerPrice);
+                    }
+                }
+            }, 600);
+        }
+
+        function showChatBuyBtn(price) {
+            const btn = document.getElementById('chat-buy-btn');
+            btn.innerHTML = `<i class="fa-solid fa-cart-shopping"></i> Comprar por ${price} 🪙`;
+            btn.classList.remove('hidden');
+            btn.onclick = () => window.processBuy(price);
+        }
+
+        // --- LÓGICA DE COMPRA FINAL ---
+        window.processBuy = function(finalPrice) {
             window.playSound('click');
             const now = Date.now();
             
@@ -373,33 +572,37 @@
                 return window.showNotification("¡Debes esperar 10 minutos entre compras!", true);
             }
 
-            if (state.coins < price) {
+            if (state.coins < finalPrice) {
                 window.playSound('error');
                 return window.showNotification("No tienes suficientes monedas.", true);
             }
 
+            // Validar límites de animales (max 6)
+            if (negState.type === 'animal' && state.animals.length >= 6) {
+                window.playSound('error');
+                return window.showNotification("Granja llena. Máximo 6 animales.", true);
+            }
+
             // Realizar compra
             window.playSound('buy');
-            state.coins -= price;
+            state.coins -= finalPrice;
             state.lastMercadilloBuy = now;
             
-            if(type === 'tool') {
-                state.tools[itemId] = (state.tools[itemId] || 0) + amount;
+            if(negState.type === 'tool') {
+                state.tools[negState.itemId] = (state.tools[negState.itemId] || 0) + negState.amount;
+            } else if (negState.type === 'animal') {
+                state.animals.push({ type: negState.itemId, fedAt: null });
             } else {
-                state.inventory[itemId] = (state.inventory[itemId] || 0) + amount;
+                // Seeds & Food
+                state.inventory[negState.itemId] = (state.inventory[negState.itemId] || 0) + negState.amount;
             }
             
-            saveState(); // Guardar en Firebase
+            saveState();
             
             document.getElementById('coins-display').innerText = state.coins;
-            window.showNotification(`¡Compraste ${amount > 1 ? 'x'+amount+' ' : ''}${itemName}!`);
+            window.showNotification(`¡Compraste ${negState.amount > 1 ? 'x'+negState.amount+' ' : ''}${negState.itemName}!`);
             
-            // Efecto visual en el botón
-            btnElement.innerHTML = '<i class="fa-solid fa-check"></i> Comprado';
-            btnElement.classList.replace('bg-pink-400', 'bg-green-500');
-            btnElement.classList.replace('hover:bg-pink-500', 'hover:bg-green-600');
-            btnElement.classList.replace('shadow-[0_4px_0_#db2777]', 'shadow-[0_4px_0_#16a34a]');
-            
+            window.closeActionModal();
             updateTimerUI();
         }
 
@@ -413,6 +616,9 @@
             const now = Date.now();
             const elapsed = now - state.lastMercadilloBuy;
             
+            // Disable action buttons globally if in cooldown
+            const buttons = document.querySelectorAll('.action-btn');
+
             if (elapsed < COOLDOWN_MS) {
                 // En cooldown
                 document.body.classList.add('cooldown-active');
@@ -425,6 +631,7 @@
                 const s = Math.floor((msLeft % 60000) / 1000);
                 timerDisplay.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                 timerDisplay.className = "font-black text-lg bg-red-200 text-red-800 px-3 py-1 rounded-lg";
+
             } else {
                 // Libre para comprar
                 document.body.classList.remove('cooldown-active');
