@@ -150,6 +150,13 @@ let currentCycleId = 0, currentToolsCycleId = 0, currentLongCycleId = 0, globalS
 const LONG_CYCLE_MS = 12 * 60 * 60 * 1000;
 
 let pendingLevelUps = [];
+let currentEventActive = false;
+
+function formatEventTime(ms) {
+    if (ms <= 0) return "00:00:00";
+    const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60);
+    return `${h.toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+}
 
 function formatTimeRemaining(ms) {
     if (ms <= 0) return "0s";
@@ -172,6 +179,7 @@ function generateItemData(fullId) {
 
     const weather = getCurrentWeather();
     finalTime *= weather.speedMod;
+    if (currentEventActive) finalTime = Math.max(1000, Math.floor(finalTime / 10)); // 10 veces más rápido ⚡
     if (type === 'crop') finalSell *= weather.priceMod;
 
     return {
@@ -353,6 +361,28 @@ function updateTimers() {
     document.getElementById('shop-long-timer').innerText = `${lh.toString().padStart(2, '0')}:${lm.toString().padStart(2, '0')}:${ls.toString().padStart(2, '0')}`;
     if (msLeftLong > LONG_CYCLE_MS - 2000) renderShopLong();
 
+    const EVENT_CYCLE = 60 * 60 * 1000;
+    const EVENT_DURATION = 60 * 1000;
+    const timeInCycle = now % EVENT_CYCLE;
+    const eventTimeLeft = EVENT_CYCLE - timeInCycle;
+    const eventLabel = document.getElementById('event-status-label');
+    const eventTimer = document.getElementById('event-countdown');
+    if (timeInCycle < EVENT_DURATION) {
+        currentEventActive = true;
+        if (eventLabel) eventLabel.innerText = "¡EVENTO ACTIVO TERMINA EN!";
+        if (eventTimer) {
+            eventTimer.innerText = formatEventTime(EVENT_DURATION - timeInCycle);
+            eventTimer.className = "text-5xl font-black text-red-500 tabular-nums drop-shadow-sm animate-pulse";
+        }
+    } else {
+        currentEventActive = false;
+        if (eventLabel) eventLabel.innerText = "Próximo evento en:";
+        if (eventTimer) {
+            eventTimer.innerText = formatEventTime(eventTimeLeft);
+            eventTimer.className = "text-5xl font-black text-gray-800 tabular-nums drop-shadow-sm";
+        }
+    }
+
     for (let i = 0; i < getUnlockedPlots(); i++) {
         const plot = state.plots[i];
         if (plot.seedItem && plot.plantedAt) {
@@ -401,7 +431,7 @@ function renderTradesUI() {
 
 window.changeMainTab = function (tab) {
     playSound('click');
-    ['farm', 'shop', 'trade', 'catalog', 'upgrades', 'quests', 'animals', 'leaderboard', 'market'].forEach(t => {
+    ['farm', 'shop', 'trade', 'catalog', 'upgrades', 'quests', 'animals', 'leaderboard', 'market', 'events'].forEach(t => {
         const sec = document.getElementById(`section-${t}`);
         if (sec) { sec.classList.add('hidden'); sec.classList.remove('flex'); }
         const btn = document.getElementById(`main-tab-${t}`);
@@ -793,17 +823,24 @@ window.closeLiveTrade = function () {
 }
 
 function renderLiveTrade(trade) {
-    if (trade.status === 'completed') { closeLiveTrade(); return showNotification("¡Trade Completado!"); }
-    const isSender = trade.senderName === username;
-    const myOffer = (isSender ? trade.senderOffer : trade.receiverOffer) || {};
-    const theirOffer = (isSender ? trade.receiverOffer : trade.senderOffer) || {};
-    const theirName = isSender ? trade.receiverName : trade.senderName;
-    const myConfirmed = isSender ? trade.senderConfirmed : trade.receiverConfirmed;
-    const theirConfirmed = isSender ? trade.receiverConfirmed : trade.senderConfirmed;
+    try {
+        if (!trade) return;
+        if (trade.status === 'completed') { closeLiveTrade(); return showNotification("¡Trade Completado!"); }
+        const isSender = trade.senderName === username;
+        const myOffer = (isSender ? trade.senderOffer : trade.receiverOffer) || {};
+        const theirOffer = (isSender ? trade.receiverOffer : trade.senderOffer) || {};
+        const theirName = isSender ? trade.receiverName : trade.senderName;
+        const myConfirmed = isSender ? trade.senderConfirmed : trade.receiverConfirmed;
+        const theirConfirmed = isSender ? trade.receiverConfirmed : trade.senderConfirmed;
 
-    const getItemNameUI = (k) => { let i = generateItemData(k); if (i) return `<span class="text-base mr-1">${i.icon}</span>${i.name}`; const t = BASE_TOOLS[k]; if (t) return `<span class="text-base mr-1">${t.icon}</span>${t.name}`; return k; };
+        const getItemNameUI = (k) => {
+            if (k === '_coins') return `<span class="text-base mr-1 drop-shadow-sm">💰</span>Monedas`;
+            let i = generateItemData(k); if (i) return `<span class="text-base mr-1">${i.icon}</span>${i.name}`;
+            const t = BASE_TOOLS[k]; if (t) return `<span class="text-base mr-1">${t.icon}</span>${t.name}`;
+            return k;
+        };
 
-    let html = `
+        let html = `
             <div class="bg-white p-6 rounded-3xl max-w-sm w-full relative h-[80vh] flex flex-col shadow-2xl modal-enter border-4 border-blue-200">
                 <button onclick="closeLiveTrade()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"><i class="fa-solid fa-times"></i></button>
                 <h3 class="text-xl font-black text-blue-500 mb-4 text-center border-b pb-2"><i class="fa-solid fa-handshake mr-2"></i>Trade con ${theirName}</h3>
@@ -812,6 +849,7 @@ function renderLiveTrade(trade) {
                     <!-- MI LADO -->
                     <div class="flex-1 bg-blue-50 p-4 rounded-xl border-2 border-blue-200 flex flex-col relative">
                         <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white font-black text-[10px] px-3 py-0.5 rounded-full z-10 uppercase tracking-widest shadow-sm">Tú ofreces</span>
+                        <button onclick="clearMyTrade()" class="absolute -top-3 right-2 bg-red-500 text-white font-black text-[10px] px-2 py-0.5 rounded-full z-10 shadow-sm hover:focus-visible hover:bg-red-600 focus:outline-none" title="Limpiar"><i class="fa-solid fa-trash"></i></button>
                         <div class="flex-1 overflow-y-auto bg-white/70 rounded-lg p-2 mb-2">
                             ${Object.keys(myOffer).map(k => `<div class="text-[11px] font-bold p-1 bg-white border border-blue-100 rounded mb-1 flex items-center shadow-sm">x${myOffer[k]} ${getItemNameUI(k)}</div>`).join('') || '<div class="text-gray-400 text-xs text-center h-full flex items-center justify-center italic">Vacío</div>'}
                         </div>
@@ -847,9 +885,13 @@ function renderLiveTrade(trade) {
                 </button>
             </div>
             `;
-    document.getElementById('live-trade-modal').innerHTML = html;
+        document.getElementById('live-trade-modal').innerHTML = html;
 
-    if (trade.senderConfirmed && trade.receiverConfirmed && trade.status !== 'completed') executeTrade(trade);
+        if (trade.senderConfirmed && trade.receiverConfirmed && trade.status !== 'completed') executeTrade(trade);
+    } catch (e) {
+        console.error("Error rendering trade: ", e);
+        showNotification("Error visualizando trade", true);
+    }
 }
 
 window.addTradeItem = async function () {
@@ -881,8 +923,17 @@ window.toggleTradeConfirm = async function () {
     playSound('click');
     const docRef = doc(db, 'artifacts', APP_ID, 'trades', activeTradeId);
     const trade = (await getDoc(docRef)).data();
-    const confirmField = (trade.senderName === username) ? 'senderConfirmed' : 'receiverConfirmed';
+    const isSender = trade.senderName === username;
+    const confirmField = isSender ? 'senderConfirmed' : 'receiverConfirmed';
     await updateDoc(docRef, { [confirmField]: !trade[confirmField] });
+}
+
+window.clearMyTrade = async function () {
+    playSound('click');
+    const docRef = doc(db, 'artifacts', APP_ID, 'trades', activeTradeId);
+    const trade = (await getDoc(docRef)).data();
+    const field = (trade.senderName === username) ? 'senderOffer' : 'receiverOffer';
+    await updateDoc(docRef, { [field]: {}, senderConfirmed: false, receiverConfirmed: false });
 }
 
 // ================= NEW FEATURES =================
